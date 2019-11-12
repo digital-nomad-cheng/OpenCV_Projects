@@ -1,0 +1,3 @@
+/home/ubuntu/ihandy/temp/opencv_projects/c++/read_write_video/build/CMakeFiles/edit_cache.dir
+/home/ubuntu/ihandy/temp/opencv_projects/c++/read_write_video/build/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/ihandy/temp/opencv_projects/c++/read_write_video/build/CMakeFiles/read_write_video.dir
