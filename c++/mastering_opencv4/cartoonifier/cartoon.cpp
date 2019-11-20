@@ -48,6 +48,75 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
     srcColor.copyTo(dst, mask);
 }
 
+void changeFacialSkinColor(cv::Mat smallImgBGR, cv::Mat bigEdges, int debugType)
+{
+        // Convert to Y'CrCb color-space, since it is better for skin detection and color adjustment.
+        cv::Mat yuv = cv::Mat(smallImgBGR.size(), CV_8UC3);
+        cv::cvtColor(smallImgBGR, yuv, cv::COLOR_BGR2YCrCb);
+
+        // The floodFill mask has to be 2 pixels wider and 2 pixels taller than the small image.
+        // The edge mask is the full src image size, so we will shrink it to the small size,
+        // storing into the floodFill mask data.
+        int sw = smallImgBGR.cols;
+        int sh = smallImgBGR.rows;
+        cv::Mat maskPlusBorder = cv::Mat::zeros(sh+2, sw+2, CV_8U);
+        cv::Mat mask = maskPlusBorder(cv::Rect(1,1,sw,sh));  // mask is a ROI in maskPlusBorder.
+        cv::resize(bigEdges, mask, smallImgBGR.size());
+
+        // Make the mask values just 0 or 255, to remove weak edges.
+        cv::threshold(mask, mask, 80, 255, cv::THRESH_BINARY);
+        // Connect the edges together, if there was a pixel gap between them.
+        cv::dilate(mask, mask, cv::Mat());
+        cv::erode(mask, mask, cv::Mat());
+        //imshow("constraints for floodFill", mask);
+
+        // YCrCb Skin detector and color changer using multiple flood fills into a mask.
+        // Apply flood fill on many points around the face, to cover different shades & colors of the face.
+        // Note that these values are dependent on the face outline, drawn in drawFaceStickFigure().
+        int const NUM_SKIN_POINTS = 6;
+        cv::Point skinPts[NUM_SKIN_POINTS];
+        skinPts[0] = cv::Point(sw/2,          sh/2 - sh/6);
+        skinPts[1] = cv::Point(sw/2 - sw/11,  sh/2 - sh/6);
+        skinPts[2] = cv::Point(sw/2 + sw/11,  sh/2 - sh/6);
+        skinPts[3] = cv::Point(sw/2,          sh/2 + sh/16);
+        skinPts[4] = cv::Point(sw/2 - sw/9,   sh/2 + sh/16);
+        skinPts[5] = cv::Point(sw/2 + sw/9,   sh/2 + sh/16);
+        // Skin might be fairly dark, or slightly less colorful.
+        // Skin might be very bright, or slightly more colorful but not much more blue.
+        const int LOWER_Y = 60;
+        const int UPPER_Y = 80;
+        const int LOWER_Cr = 25;
+        const int UPPER_Cr = 15;
+        const int LOWER_Cb = 20;
+        const int UPPER_Cb = 15;
+        cv::Scalar lowerDiff = cv::Scalar(LOWER_Y, LOWER_Cr, LOWER_Cb);
+        cv::Scalar upperDiff = cv::Scalar(UPPER_Y, UPPER_Cr, UPPER_Cb);
+        // Instead of drawing into the "yuv" image, just draw 1's into the "maskPlusBorder" image, so we can apply it later.
+        // The "maskPlusBorder" is initialized with the edges, because floodFill() will not go across non-zero mask pixels.
+        cv::Mat edgeMask = mask.clone();    // Keep an duplicate copy of the edge mask.
+        for (auto i=0; i<NUM_SKIN_POINTS; i++) {
+            // Use the floodFill() mode that stores to an external mask, instead of the input image.
+            const int flags = 4 | cv::FLOODFILL_FIXED_RANGE | cv::FLOODFILL_MASK_ONLY;
+            cv::floodFill(yuv, maskPlusBorder, skinPts[i], cv::Scalar(), NULL, lowerDiff, upperDiff, flags);
+            if (debugType >= 1)
+                cv::circle(smallImgBGR, skinPts[i], 5, CV_RGB(0, 0, 255), 1, cv::LINE_AA);
+        }
+        if (debugType >= 2)
+            cv::imshow("flood mask", mask*120); // Draw the edges as white and the skin region as grey.
+
+        // After the flood fill, "mask" contains both edges and skin pixels, whereas
+        // "edgeMask" just contains edges. So to get just the skin pixels, we can remove the edges from it.
+        mask -= edgeMask;
+        // "mask" now just contains 1's in the skin pixels and 0's for non-skin pixels.
+
+        // Change the color of the skin pixels in the given BGR image.
+        auto Red = 0;
+        auto Green = 70;
+        auto Blue = 0;
+        cv::add(smallImgBGR, cv::Scalar(Blue, Green, Red), smallImgBGR, mask);
+}
+
+
 void removePepperNoise(cv::Mat &mask) {
     for(auto y=2; y<mask.rows-2; y++) {
         uchar *pThis = mask.ptr(y);
