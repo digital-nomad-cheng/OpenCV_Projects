@@ -5,10 +5,10 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
     cv::cvtColor(srcColor, srcGray, cv::COLOR_BGR2GRAY);
     cv::medianBlur(srcGray, srcGray, 7);
     cv::Size size = srcColor.size();
-    cv::Mat mask = cv::Mat(size, cv::CV_8U);
-    cv::Mat edges = cv::Mat(size, cv::CV_8U);
+    cv::Mat mask = cv::Mat(size, CV_8U);
+    cv::Mat edges = cv::Mat(size, CV_8U);
     if(!evilMode) {
-        cv::Laplacian(srcGray, edges, cv::CV_8U, 5);
+        cv::Laplacian(srcGray, edges, CV_8U, 5);
         cv::threshold(edges, mask, 80, 255, cv::THRESH_BINARY_INV);
         removePepperNoise(mask);
     } else {
@@ -17,7 +17,7 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
         cv::Scharr(srcGray, edges2, CV_8U, 1, 0, -1);
         edges += edges2;
         cv::threshold(edges, mask, 12, 255, cv::THRESH_BINARY_INV);
-        cv::mediaBlur(mask, mask, 3);
+        cv::medianBlur(mask, mask, 3);
     }
 
     if(sketchMode) {
@@ -43,8 +43,8 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
     if(alienMode) {
         changeFacialSkinColor(smallImg, edges, debugType);
     }
-    cv::resize(smallImg, srcColor, size, 0, 0, cv::INTER_LIENAR);
-    cv::memset((char*)dst.data, 0, dst.step*dst.rows);
+    cv::resize(smallImg, srcColor, size, 0, 0, cv::INTER_LINEAR);
+    memset((char*)dst.data, 0, dst.step*dst.rows); // in c or c++
     srcColor.copyTo(dst, mask);
 }
 
@@ -65,7 +65,7 @@ void removePepperNoise(cv::Mat &mask) {
         for(auto x=2; x<mask.rows-2; x++) {
             uchar v = *pThis;
             if(v == 0) {
-                bool AllAbove = *(pUp2-2) && *(pUp2-1) && *(pUp2) && *(pUp2+1) && *(pUp2+2);
+                bool allAbove = *(pUp2-2) && *(pUp2-1) && *(pUp2) && *(pUp2+1) && *(pUp2+2);
                 bool allLeft = *(pUp1 - 2) && *(pThis - 2) && *(pDown1 - 2);
                 bool allBelow = *(pDown2 - 2) && *(pDown2 - 1) && *(pDown2) && *(pDown2 + 1) && *(pDown2 + 2);
                 bool allRight = *(pUp1 + 2) && *(pThis + 2) && *(pDown1 + 2);
@@ -97,13 +97,13 @@ void removePepperNoise(cv::Mat &mask) {
     }     
 }
 
-void drawFaceStickFigure(Mat dst) {
+void drawFaceStickFigure(cv::Mat dst) {
     cv::Size size = dst.size();
     int sw = size.width;
     int sh = size.height;
 
     cv::Mat faceOutline = cv::Mat::zeros(size, CV_8UC3);
-    cv::Scalar color = cv::CV_RGB(255, 255, 0);
+    cv::Scalar color = CV_RGB(255, 255, 0);
     auto thickness = 4;
     int faceH = sh/2 * 70/100;
     int faceW = faceH * 72/100;
@@ -116,9 +116,9 @@ void drawFaceStickFigure(Mat dst) {
     auto eyeYshift = 11;
     
     // draw top, bottom of right eye, draw top bottom of left eye
-    cv::ellipse(faceOutline, cv::point(sw/2 - eyeX, sh/2 - eyeY), cv::Size(eyeW, eyeH), 0, 
-        180+eyeA, 360-eyeA, color, thickness, LINE_AA);
-    cv::ellipse(faceOutline, cv::Point(sw/2 - eyeX, sh/2 - eyeY - eyeYshift), cv::Size(eyeW, eyeH), 0, 0+eyeA, 180-eyeA, color, thickness, LINE_AA);
+    cv::ellipse(faceOutline, cv::Point(sw/2 - eyeX, sh/2 - eyeY), cv::Size(eyeW, eyeH), 0, 
+        180+eyeA, 360-eyeA, color, thickness, cv::LINE_AA);
+    cv::ellipse(faceOutline, cv::Point(sw/2 - eyeX, sh/2 - eyeY - eyeYshift), cv::Size(eyeW, eyeH), 0, 0+eyeA, 180-eyeA, color, thickness, cv::LINE_AA);
         
     int mouthY = faceH * 53/100;
     int mouthW = faceW * 45/100;
@@ -128,7 +128,7 @@ void drawFaceStickFigure(Mat dst) {
     auto fontFace = cv::FONT_HERSHEY_COMPLEX;
     auto fontScale = 1.0f;
     auto fontThickness = 2;
-    cv::putText(faceOutline, "Put your face here", cv::Point(sw * 23/100, sh * 10/100), fontFace, fontScale, color, fontThickness, LINE_AA);
+    cv::putText(faceOutline, "Put your face here", cv::Point(sw * 23/100, sh * 10/100), fontFace, fontScale, color, fontThickness, cv::LINE_AA);
     
     addWeighted(dst, 1.0, faceOutline, 0.7, 0, dst, CV_8UC3);
 }
