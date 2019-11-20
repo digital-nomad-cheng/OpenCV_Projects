@@ -86,7 +86,7 @@ private:
 void track(cv::Mat prevFrame, cv::Mat currFrame, const std::vector<cv::Point2f>& currLandmarks, 
         std::vector<PointState>& trackPoints) {
     cv::TermCriteria termcrit(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 0.01);
-    cv::Size winSize(15, 15);
+    cv::Size winSize(7, 7);
     std::vector<uchar> status(trackPoints.size(), 0);
     std::vector<float> err;
     std::vector<cv::Point2f> newLandmarks;
@@ -97,7 +97,7 @@ void track(cv::Mat prevFrame, cv::Mat currFrame, const std::vector<cv::Point2f>&
             status, err, winSize, 3, termcrit, 0, 0.001);
     for (size_t i = 0; i < status.size(); i++) {
         if (status[i]) {
-            trackPoints[i].update((newLandmarks[i]*0.2 + 0.8*currLandmarks[i]));
+            trackPoints[i].update((newLandmarks[i] + currLandmarks[i])/2);
         } else {
             trackPoints[i].update(currLandmarks[i]);
         }
@@ -143,6 +143,7 @@ int main(int argc, char** argv) {
             
                 }
             }
+            
             for (const PointState& tp: trackPoints) {
                 std::cout << trackPoints.size() << std::endl; 
                 cv::circle(frame, tp.getPoint(), 3, tp.isPredicted() ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 255, 0), cv::FILLED);
