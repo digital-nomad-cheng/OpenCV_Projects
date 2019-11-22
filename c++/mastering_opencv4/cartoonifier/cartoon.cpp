@@ -1,6 +1,7 @@
 #include "cartoon.hpp"
 
-void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienMode, bool evilMode, int debugType) {
+void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienMode, bool evilMode, int debugType) 
+{
     cv::Mat srcGray;
     cv::cvtColor(srcColor, srcGray, cv::COLOR_BGR2GRAY);
     cv::medianBlur(srcGray, srcGray, 7);
@@ -9,6 +10,7 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
     cv::Mat edges = cv::Mat(size, CV_8U);
     if(!evilMode) {
         cv::Laplacian(srcGray, edges, CV_8U, 5);
+        // cv::imshow("Laplacian", edges);
         cv::threshold(edges, mask, 80, 255, cv::THRESH_BINARY_INV);
         removePepperNoise(mask);
     } else {
@@ -50,7 +52,6 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
 
 void changeFacialSkinColor(cv::Mat smallImgBGR, cv::Mat bigEdges, int debugType)
 {
-        // Convert to Y'CrCb color-space, since it is better for skin detection and color adjustment.
         cv::Mat yuv = cv::Mat(smallImgBGR.size(), CV_8UC3);
         cv::cvtColor(smallImgBGR, yuv, cv::COLOR_BGR2YCrCb);
 
@@ -63,12 +64,10 @@ void changeFacialSkinColor(cv::Mat smallImgBGR, cv::Mat bigEdges, int debugType)
         cv::Mat mask = maskPlusBorder(cv::Rect(1,1,sw,sh));  // mask is a ROI in maskPlusBorder.
         cv::resize(bigEdges, mask, smallImgBGR.size());
 
-        // Make the mask values just 0 or 255, to remove weak edges.
         cv::threshold(mask, mask, 80, 255, cv::THRESH_BINARY);
-        // Connect the edges together, if there was a pixel gap between them.
         cv::dilate(mask, mask, cv::Mat());
         cv::erode(mask, mask, cv::Mat());
-        //imshow("constraints for floodFill", mask);
+        // cv::imshow("constraints for floodFill", mask);
 
         // YCrCb Skin detector and color changer using multiple flood fills into a mask.
         // Apply flood fill on many points around the face, to cover different shades & colors of the face.
@@ -95,21 +94,20 @@ void changeFacialSkinColor(cv::Mat smallImgBGR, cv::Mat bigEdges, int debugType)
         // The "maskPlusBorder" is initialized with the edges, because floodFill() will not go across non-zero mask pixels.
         cv::Mat edgeMask = mask.clone();    // Keep an duplicate copy of the edge mask.
         for (auto i=0; i<NUM_SKIN_POINTS; i++) {
-            // Use the floodFill() mode that stores to an external mask, instead of the input image.
             const int flags = 4 | cv::FLOODFILL_FIXED_RANGE | cv::FLOODFILL_MASK_ONLY;
             cv::floodFill(yuv, maskPlusBorder, skinPts[i], cv::Scalar(), NULL, lowerDiff, upperDiff, flags);
             if (debugType >= 1)
                 cv::circle(smallImgBGR, skinPts[i], 5, CV_RGB(0, 0, 255), 1, cv::LINE_AA);
         }
-        if (debugType >= 2)
-            cv::imshow("flood mask", mask*120); // Draw the edges as white and the skin region as grey.
+
+        if (debugType >= 1)
+            cv::imshow("flood mask", mask*120); 
 
         // After the flood fill, "mask" contains both edges and skin pixels, whereas
         // "edgeMask" just contains edges. So to get just the skin pixels, we can remove the edges from it.
         mask -= edgeMask;
         // "mask" now just contains 1's in the skin pixels and 0's for non-skin pixels.
 
-        // Change the color of the skin pixels in the given BGR image.
         auto Red = 0;
         auto Green = 70;
         auto Blue = 0;
@@ -117,8 +115,9 @@ void changeFacialSkinColor(cv::Mat smallImgBGR, cv::Mat bigEdges, int debugType)
 }
 
 
-void removePepperNoise(cv::Mat &mask) {
-    for(auto y=2; y<mask.rows-2; y++) {
+void removePepperNoise(cv::Mat &mask) 
+{
+    for (auto y = 2; y < mask.rows-2; y++) {
         uchar *pThis = mask.ptr(y);
         uchar *pUp1 = mask.ptr(y-1);
         uchar *pUp2 = mask.ptr(y-2);
@@ -131,7 +130,7 @@ void removePepperNoise(cv::Mat &mask) {
         pDown1 += 2;
         pDown2 += 2;
 
-        for(auto x=2; x<mask.rows-2; x++) {
+        for(auto x = 2; x < mask.rows-2; x++) {
             uchar v = *pThis;
             if(v == 0) {
                 bool allAbove = *(pUp2-2) && *(pUp2-1) && *(pUp2) && *(pUp2+1) && *(pUp2+2);
@@ -161,12 +160,12 @@ void removePepperNoise(cv::Mat &mask) {
             pUp2++;
             pDown1++;
             pDown2++;
-        }
-                
+        }       
     }     
 }
 
-void drawFaceStickFigure(cv::Mat dst) {
+void drawFaceStickFigure(cv::Mat dst) 
+{
     cv::Size size = dst.size();
     int sw = size.width;
     int sh = size.height;

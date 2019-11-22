@@ -22,6 +22,985 @@ When developing an embedded computer vision  system, it is a good idea to build 
 
 The application uses an **OpenCV** GUI window, initializes the camera, and with each camera frame it calls the cartoonifyImage() function, containing most of the code in this chapter. It then displays the  processed image in the GUI window. This chapter will explain how to  create the desktop application from scratch using a USB webcam and the  embedded system based on the desktop application, using the Raspberry Pi Camera Module. So, first you will create a desktop project in your  favorite IDE, with a main.cpp file to hold the  GUI code given in the following sections, such as the main loop, webcam  functionality, and keyboard input, and you will create a cartoon.cpp file with the image processing operations with most of this chapter's code in a function called cartoonifyImage().
 
+## Accessing the webcam
+
+To access a computer's webcam or camera device, you can simply call the open() function on a cv::VideoCapture object (OpenCV's method of accessing your camera device), and pass 0 as the default camera ID number. Some computers have multiple cameras attached, or they do not work with a default camera of 0, so it is common practice to allow the user to pass the desired camera  number as a command-line argument, in case they want to try camera 1, 2, or -1, for example. We will also try to set the camera resolution to 640 x 480 using cv::VideoCapture::set() to run faster on high-resolution cameras.
+
+Depending on your  camera model, driver, or system, OpenCV might not change the properties  of your camera. It is not important for this project, so don't worry if  it does not work with your webcam.
+
+You can put this code in the main() function of your main.cpp file:
+
+```
+auto cameraNumber = 0; 
+if (argc> 1) 
+cameraNumber = atoi(argv[1]); 
+
+// Get access to the camera. 
+cv::VideoCapture camera; 
+camera.open(cameraNumber); 
+if (!camera.isOpened()) { 
+   std::cerr<<"ERROR: Could not access the camera or video!"<< std::endl; 
+   exit(1); 
+} 
+
+// Try to set the camera resolution. 
+camera.set(cv::CV_CAP_PROP_FRAME_WIDTH, 640); 
+camera.set(cv::CV_CAP_PROP_FRAME_HEIGHT, 480);
+```
+
+After the webcam has been initialized, you can grab the current camera image as a cv::Mat object (OpenCV's image container). You can grab each camera frame by using the C++ streaming operator from your cv::VideoCapture object in a cv::Mat object, just like if you were getting input from a console.
+
+OpenCV makes it very easy to capture frames from a video file (such as an AVI or MP4 file)  or network stream instead of a webcam. Instead of passing an integer  such as camera.open(0), pass a string such as camera.open("my_video.avi") and then grab frames just like it was a webcam. The source code provided with this book has an initCamera() function that opens a webcam, video file, or network stream.
+
+## Main camera processing loop for a desktop app
+
+If you want to display a GUI window on the screen using OpenCV, you call the cv::namedWindow() function and then the cv::imshow() function for each image, but you must also call cv::waitKey() once per frame, otherwise your windows will not update at all! Calling cv::waitKey(0) waits forever until the user hits a key in the window, but a positive number such as waitKey(20) or higher will wait for at least that many milliseconds.
+
+Put this main loop in the main.cpp file, as the basis of your real-time camera app:
+
+```
+while (true) { 
+    // Grab the next camera frame. 
+    cv::Mat cameraFrame; 
+    camera >> cameraFrame; 
+    if (cameraFrame.empty()) { 
+        std::cerr<<"ERROR: Couldn't grab a camera frame."<< 
+        std::endl; 
+        exit(1); 
+    } 
+    // Create a blank output image, that we will draw onto. 
+    cv::Mat displayedFrame(cameraFrame.size(), cv::CV_8UC3); 
+
+    // Run the cartoonifier filter on the camera frame. 
+    cartoonifyImage(cameraFrame, displayedFrame); 
+
+    // Display the processed image onto the screen. 
+    imshow("Cartoonifier", displayedFrame); 
+
+    // IMPORTANT: Wait for atleast 20 milliseconds, 
+    // so that the image can be displayed on the screen! 
+    // Also checks if a key was pressed in the GUI window. 
+    // Note that it should be a "char" to support Linux. 
+    auto keypress = cv::waitKey(20); // Needed to see anything! 
+    if (keypress == 27) { // Escape Key 
+       // Quit the program! 
+       break; 
+    } 
+ }//end while
+```
+
+## Generating a black and white sketch
+
+To obtain a sketch (black and white drawing) of the camera frame, we will use an edge detection filter, whereas to  obtain a color painting, we will use an edge preserving filter  (bilateral filter) to further smooth the flat regions while keeping  edges intact. By overlaying the sketch drawing on top of the color  painting, we obtain a cartoon effect, as shown earlier in the screenshot of the final app.
+
+There are many different edge detection  filters, such as Sobel, Scharr, and Laplacian filters, or a Canny edge  detector. We will use a Laplacian edge filter since it produces edges  that look most similar to hand sketches compared to Sobel or Scharr, and is quite consistent compared to a Canny edge detector, which produces  very clean line drawings but is affected more by random noise in the  camera frames, and therefore the line drawings would often change  drastically between frames.
+
+Nevertheless, we still need to reduce the  noise in the image before we use a Laplacian edge filter. We will use a  median filter because it is good at removing noise while keeping edges  sharp, but is not as slow as a bilateral filter. Since Laplacian filters use grayscale images, we must convert from OpenCV's default BGR format  to grayscale. In your empty cartoon.cpp file, put this code at the top so you can access OpenCV and STD C++ templates without typing cv:: and std:: everywhere:
+
+```
+// Include OpenCV's C++ Interface 
+ #include <opencv2/opencv.hpp> 
+
+ using namespace cv; 
+ using namespace std;
+```
+
+Put this and all remaining code in a cartoonifyImage() function in your cartoon.cpp file:
+
+```
+Mat gray; 
+ cvtColor(srcColor, gray, CV_BGR2GRAY); 
+ const int MEDIAN_BLUR_FILTER_SIZE = 7; 
+ medianBlur(gray, gray, MEDIAN_BLUR_FILTER_SIZE); 
+ Mat edges; 
+ const int LAPLACIAN_FILTER_SIZE = 5; 
+ Laplacian(gray, edges, CV_8U, LAPLACIAN_FILTER_SIZE);
+```
+
+The Laplacian filter produces edges with  varying brightness, so to make the edges look more like a sketch, we  apply a binary threshold to make the edges either white or black:
+
+```
+Mat mask; 
+ const int EDGES_THRESHOLD = 80; 
+ threshold(edges, mask, EDGES_THRESHOLD, 255, THRESH_BINARY_INV);
+```
+
+In the following diagram, you see  the original image (to the left) and the generated edge mask (to the  right), which looks similar to a sketch drawing. After we generate a  color painting (explained later), we also put this edge mask on top to  have black line drawings:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/4dcc0951-4099-4a05-acfe-a6565c207408.png)
+
+## Generating a color painting and a cartoon
+
+A strong  bilateral filter smooths flat regions while keeping edges sharp, and  therefore is great as an automatic cartoonifier or painting filter,  except that it is extremely slow (that is, measured in seconds or even  minutes, rather than milliseconds!). Therefore, we will use some tricks  to obtain a nice cartoonifier, while still running at an acceptable  speed. The most important trick we can use is that we can perform  bilateral filtering at a lower resolution and it will still have a  similar effect as a full resolution, but run much faster. Let's reduce the total number of pixels by four (for example, half width and half height):
+
+```
+Size size = srcColor.size(); 
+Size smallSize; 
+smallSize.width = size.width/2; 
+smallSize.height = size.height/2; 
+Mat smallImg = Mat(smallSize, CV_8UC3); 
+resize(srcColor, smallImg, smallSize, 0,0, INTER_LINEAR);
+```
+
+Rather than applying a large bilateral  filter, we will apply many small bilateral filters, to produce a strong  cartoon effect in less time. We will truncate the filter (refer to the  following diagram) so that instead of performing a whole filter (for  example, a filter size of 21 x 21, when the bell curve is 21 pixels  wide), it just uses the minimum filter size needed for a convincing  result (for example, with a filter size of just 9 x 9 even if the bell  curve is 21 pixels wide). This truncated filter will apply the major  part of the filter (gray area) without wasting time on the minor part of the filter (white area under the curve), so it will run several times  faster:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/1c36205a-1c7b-446e-b674-626a44bfa09f.png)
+
+Therefore, we have four parameters that  control the bilateral filter: color strength, positional strength, size, and repetition count. We need a temp Mat since the bilateralFilter() function can't overwrite its input (referred to as **in-place processing**), but we can apply one filter storing a temp Mat and another filter storing back the input:
+
+```
+Mat tmp = Mat(smallSize, CV_8UC3); 
+auto repetitions = 7; // Repetitions for strong cartoon effect. 
+for (auto i=0; i<repetitions; i++) { 
+    auto ksize = 9; // Filter size. Has large effect on speed. 
+    double sigmaColor = 9; // Filter color strength. 
+    double sigmaSpace = 7; // Spatial strength. Affects speed. 
+    bilateralFilter(smallImg, tmp, ksize, sigmaColor, sigmaSpace); 
+    bilateralFilter(tmp, smallImg, ksize, sigmaColor, sigmaSpace); 
+}
+```
+
+Remember that this was applied to the  shrunken image, so we need to expand the image back to the original  size. Then, we can overlay the edge mask that we found earlier. To  overlay the edge mask sketch onto the bilateral  filter painting (left-hand side of the following image), we can start  with a black background and copy the painting pixels that aren't edges  in the sketch mask:
+
+```
+Mat bigImg; 
+ resize(smallImg, bigImg, size, 0,0, INTER_LINEAR); 
+ dst.setTo(0); 
+ bigImg.copyTo(dst, mask);
+```
+
+The result is a cartoon version of the original photo, as shown on the right-hand side of the following image, where the *sketch* mask is overlaid on the painting:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/812bd780-36ce-470d-b69b-8e72fb960a53.png)
+
+
+
+# Generating an evil mode using edge filters
+
+Cartoons and comics always have both good  and bad characters. With the right combination of edge filters, a scary  image can be generated from the most innocent looking people! The trick  is to use a small edge filter that will find many edges all over the  image, then merge the edges using a small median filter.
+
+We will perform this on a grayscale image  with some noise reduction, so the preceding code for converting the  original image to grayscale and applying a 7 x 7 median filter should  still be used (the first image in the following diagram shows the output of the grayscale median blur). Instead of following it with a Laplacian filter and Binary threshold, we can get a scarier look if we apply a 3 x 3 Scharr gradient filter along *x* and *y* (second image in the diagram), then a binary threshold with a very low cutoff (third image in the diagram), and a 3 x 3 median blur, producing the final *evil* mask (fourth image in the diagram):
+
+```
+Mat gray;
+ cvtColor(srcColor, gray, CV_BGR2GRAY);
+ const int MEDIAN_BLUR_FILTER_SIZE = 7;
+ medianBlur(gray, gray, MEDIAN_BLUR_FILTER_SIZE);
+ Mat edges, edges2;
+ Scharr(srcGray, edges, CV_8U, 1, 0);
+ Scharr(srcGray, edges2, CV_8U, 1, 0, -1);
+ edges += edges2;
+ // Combine the x & y edges together.
+ const int EVIL_EDGE_THRESHOLD = 12
+ threshold(edges, mask, EVIL_EDGE_THRESHOLD, 255,
+ THRESH_BINARY_INV);
+ medianBlur(mask, mask, 3)
+```
+
+The following diagram shows the evil effect applied in the fourth image:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/0b25aa5d-c6dc-43d5-aeed-9b1a9c76826e.png)
+
+Now that we have an *evil* mask, we can overlay this mask onto the *cartoonified* painting image as we did with the regular *sketch* edge mask. The final result is shown on the right-hand side of the following diagram:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/894dd521-2f6c-4afe-a1ad-0a482ee5924f.png)
+
+## Generating an alien mode using skin detection
+
+Now that we have a *sketch* mode, a *cartoon* mode (*painting* + *sketch* mask), and an *evil* mode (*painting* + *evil* mask), for fun, let's try something more complex: an *alien* mode, by detecting the skin regions of the face and then changing the skin color to green.
+
+## Skin detection algorithm
+
+There are many different techniques used for detecting skin regions, from simple color thresholds using **RGB** (short for **Red-Green-Blue**) or **HSV** (short for **Hue-Saturation-Brightness**) values, or color histogram calculation and re-projection, to complex machine  learning algorithms of mixture models that need camera calibration in  the **CIELab** color space, offline training  with many sample faces, and so on. But even the complex methods don't  necessarily work robustly across various camera and lighting conditions  and skin types. Since we want our skin detection to run on an embedded  device, without any calibration or training, and we are just using skin  detection for a fun image filter; it is sufficient for us to use a  simple skin detection method. However, the color responses from the tiny camera sensor in the Raspberry Pi Camera Module tend to vary  significantly, and we want to support skin detection for people of any  skin color but without any calibration, so we need something more robust than simple color thresholds.
+
+For example, a simple HSV skin detector can  treat any pixel as skin if its hue color is fairly red, saturation is  fairly high but not extremely high, and its brightness is not too dark  or extremely bright. But cameras in mobile phones or Raspberry Pi Camera Modules often have bad white balancing; therefore, a person's skin  might look slightly blue instead of red, for instance, and this would be a major problem for simple HSV thresholding.
+
+A more robust solution is to perform face detection with a Haar or LBP cascade classifier (shown in [Chapter 5](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/86c5b037-c45d-4622-9131-078fca1cf397.xhtml), *Face Detection and Recognition with the DNN Module*), then look at the range of colors for the pixels in the middle of the  detected face, since you know that those pixels should be skin pixels of the actual person. You could then scan the whole image or nearby region for pixels of a similar color as the center of the face. This has the  advantage that it is very likely to find at least some of the true skin  region of any detected person, no matter what their skin color is or  even if their skin appears somewhat blueish or reddish in the camera  image.
+
+Unfortunately, face detection using cascade  classifiers is quite slow on current embedded devices, so that method  might be less ideal for some real-time embedded applications. On the  other hand, we can take advantage of the fact that for mobile apps and  some embedded systems, it can be expected that the user will be facing  the camera directly from a very close distance, so it can be reasonable  to ask the user to place their face at a specific location and distance, rather than try to detect the location and size of their face. This is  the basis of many mobile phone apps, where the app asks the user to  place their face at a certain position or perhaps to manually drag  points on the screen to show where the corners of their face are in a  photo. So, let's simply draw the outline of a face in the center of the  screen, and ask the user to move their face to the position and size shown.
+
+## Showing the user where to put their face
+
+When the *alien* mode is first  started, we will draw the face outline on top of the camera frame so the user knows where to put their face. We will draw a big ellipse covering 70% of the image height, with a fixed aspect ratio of 0.72, so that the face will not become too skinny or fat depending on the aspect ratio of the camera:
+
+```
+// Draw the color face onto a black background.
+ Mat faceOutline = Mat::zeros(size, CV_8UC3);
+ Scalar color = CV_RGB(255,255,0); // Yellow.
+ auto thickness = 4;
+ 
+ // Use 70% of the screen height as the face height.
+ auto sw = size.width;
+ auto sh = size.height;
+ int faceH = sh/2 * 70/100; // "faceH" is radius of the ellipse.
+ 
+ // Scale the width to be the same nice shape for any screen width.
+ int faceW = faceH * 72/100;
+ // Draw the face outline.
+ ellipse(faceOutline, Point(sw/2, sh/2), Size(faceW, faceH),
+ 0, 0, 360, color, thickness, CV_AA);
+```
+
+To make it more obvious that it is a face,  let's also draw two eye outlines. Rather than drawing an eye as an  ellipse, we can give it a bit more realism (refer to the following  image) by drawing a truncated ellipse for the top of the eye and a  truncated ellipse for the bottom of the eye, because we can specify the  start and end angles when drawing with the ellipse() function:
+
+```
+// Draw the eye outlines, as 2 arcs per eye.
+ int eyeW = faceW * 23/100;
+ int eyeH = faceH * 11/100;
+ int eyeX = faceW * 48/100;
+ int eyeY = faceH * 13/100;
+ Size eyeSize = Size(eyeW, eyeH);
+ 
+ // Set the angle and shift for the eye half ellipses.
+ auto eyeA = 15; // angle in degrees.
+ auto eyeYshift = 11;
+ 
+ // Draw the top of the right eye.
+ ellipse(faceOutline, Point(sw/2 - eyeX, sh/2 -eyeY),
+ eyeSize, 0, 180+eyeA, 360-eyeA, color, thickness, CV_AA);
+ 
+ // Draw the bottom of the right eye.
+ ellipse(faceOutline, Point(sw/2 - eyeX, sh/2 - eyeY-eyeYshift),
+ eyeSize, 0, 0+eyeA, 180-eyeA, color, thickness, CV_AA);
+ 
+ // Draw the top of the left eye.
+ ellipse(faceOutline, Point(sw/2 + eyeX, sh/2 - eyeY),
+ eyeSize, 0, 180+eyeA, 360-eyeA, color, thickness, CV_AA);
+ 
+ // Draw the bottom of the left eye.
+ ellipse(faceOutline, Point(sw/2 + eyeX, sh/2 - eyeY-eyeYshift),
+ eyeSize, 0, 0+eyeA, 180-eyeA, color, thickness, CV_AA);
+```
+
+We can do the same to draw the bottom lip of the mouth:
+
+```
+// Draw the bottom lip of the mouth.
+ int mouthY = faceH * 48/100;
+ int mouthW = faceW * 45/100;
+ int mouthH = faceH * 6/100;
+ ellipse(faceOutline, Point(sw/2, sh/2 + mouthY), Size(mouthW,
+ mouthH), 0, 0, 180, color, thickness, CV_AA);
+```
+
+To make it even more obvious that the user should put their face where shown, let's write a message on the screen!
+
+```
+// Draw anti-aliased text.
+ int fontFace = FONT_HERSHEY_COMPLEX;
+ float fontScale = 1.0f;
+ int fontThickness = 2;
+ char *szMsg = "Put your face here";
+ putText(faceOutline, szMsg, Point(sw * 23/100, sh * 10/100),
+ fontFace, fontScale, color, fontThickness, CV_AA);
+```
+
+Now that we have the face outline drawn, we  can overlay it onto the displayed image by using alpha blending to  combine the cartoonified image with this drawn outline:
+
+```
+addWeighted(dst, 1.0, faceOutline, 0.7, 0, dst, CV_8UC3);
+```
+
+This results in the outline in the following image, showing the user where to put their face, so we don't have to  detect the face location:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/d6bcca80-cfee-412d-9671-066166364c78.png)
+
+## Implementation of the skin color changer
+
+Rather than detecting the skin color and then the region with that skin color, we can use OpenCV's floodFill() function, which is similar to the bucket fill tool in most image editing  software. We know that the regions in the middle of the screen should be skin pixels (since we asked the user to put their face in the middle),  so to change the whole face to have green skin, we can just apply a  green flood fill on the center pixel, which will always color some parts of the face green. In reality, the color, saturation, and brightness  are likely to be different in different parts of the face, so a flood  fill will rarely cover all the skin pixels of a face unless the  threshold is so low that it also covers unwanted pixels outside of the  face. So instead of applying a single flood fill in the center of the  image, let's apply a flood fill on six different points around the face  that should be skin pixels.
+
+A nice feature of OpenCV's floodFill() is that it can draw the flood fill in an external image rather than modify the input image. So, this feature can give us a mask image for  adjusting the color of the skin pixels without necessarily changing the  brightness or saturation, producing a more realistic image than if all  the skin pixels became an identical green pixel (losing significant face detail).
+
+Skin color changing does not work so well in the RGB color space, because you want to allow brightness to vary in  the face but not allow skin color to vary much, and RGB does not  separate brightness from the color. One solution is to use the HSV color space since it separates the brightness from the color (hue) as well as the colorfulness (Saturation). Unfortunately, HSV wraps the hue value  around red, and since the skin is mostly red, it means that you need to  work both with *hue < 10%* and *hue > 90%* since these are both red. So, instead we will use the **Y'CrCb** color space (the variant of YUV that is in OpenCV), since it separates  brightness from color and only has a single range of values for typical  skin color rather than two. Note that most cameras, images, and videos  actually use some type of YUV as their color space before conversion to  RGB, so in many cases you can get a YUV image free without converting it yourself.
+
+Since we want our alien mode to look like a  cartoon, we will apply the alien filter after the image has already been cartoonified. In other words, we have access to the shrunken color  image produced by the bilateral filter, and access to the full-sized  edge mask. Skin detection often works better at low resolutions, since  it is the equivalent of analyzing the average value of each  high-resolution pixel's neighbors (or the low-frequency signal instead  of the high-frequency noisy signal). So, let's work at the same shrunken scale as the bilateral filter (half-width and half-height). Let's  convert the painting image to YUV:
+
+```
+Mat yuv = Mat(smallSize, CV_8UC3);
+ cvtColor(smallImg, yuv, CV_BGR2YCrCb);
+```
+
+We also need to shrink the edge mask so it is on the same scale as the painting image. There is a complication with OpenCV's floodFill() function, when storing to a separate mask image, in that the mask should have a  one-pixel border around the whole image, so if the input image is *W x H* pixels in size, then the separate mask image should be *(W+2) x (H+2)* pixels in size. But the floodFill() function also allows us to initialize the mask with edges that the flood fill  algorithm will ensure it does not cross. Let's use this feature, in the  hope that it helps prevent the flood fill from extending outside of the  face. So, we need to provide two mask images: one is the edge mask of *W x H* in size, and the other image is the exact same edge mask but *(W+2) x (H+2)* in size because it should include a border around the image. It is possible to have multiple cv::Mat objects (or headers) referencing the same data, or even to have a cv::Mat object that references a sub-region of another cv::Mat image. So, instead of allocating two separate images and copying the edge mask pixels across, let's allocate a single mask image including the border, and create an extra cv::Mat header of *W x H* (which just references the region of interest in the flood fill mask without  the border). In other words, there is just one array of pixels of size *(W+2) x (H+2)* but two cv::Mat objects, where one is referencing the whole *(W+2) x (H+2)* image and the other is referencing the *W x H* region in the middle of that image:
+
+```
+auto sw = smallSize.width;
+auto sh = smallSize.height;
+Mat mask, maskPlusBorder;
+maskPlusBorder = Mat::zeros(sh+2, sw+2, CV_8UC1);
+mask = maskPlusBorder(Rect(1,1,sw,sh));
+// mask is now in maskPlusBorder.
+resize(edges, mask, smallSize); // Put edges in both of them.
+```
+
+The edge mask (shown on the left of the  following diagram) is full of both strong and weak edges, but we only  want strong edges, so we will apply a binary threshold (resulting in the middle image in the following diagram). To join some gaps between  edges, we will then combine the morphological operators dilate() and erode() to remove some gaps (also referred to as the close operator), resulting in the image on the right:
+
+```
+const int EDGES_THRESHOLD = 80;
+ threshold(mask, mask, EDGES_THRESHOLD, 255, THRESH_BINARY);
+ dilate(mask, mask, Mat());
+ erode(mask, mask, Mat());
+```
+
+
+
+
+
+We can see the result of applying thresholding and morphological  operation in the following image, first image is the input edge map,  second the thresholding filter, and last image is the dilate and erode  morphological filters:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/351d8dc8-379f-48b0-87e2-25d3e88ecb0b.png)
+
+As mentioned earlier, we want to apply flood fills in numerous points around the face, to make sure we include the  various colors and shades of the whole face. Let's choose six points  around the nose, cheeks, and forehead, as shown on the left-hand side of the following screenshot. Note that these values are dependent on the  face outline being drawn earlier:
+
+```
+auto const NUM_SKIN_POINTS = 6;
+Point skinPts[NUM_SKIN_POINTS];
+skinPts[0] = Point(sw/2, sh/2 - sh/6);
+skinPts[1] = Point(sw/2 - sw/11, sh/2 - sh/6);
+skinPts[2] = Point(sw/2 + sw/11, sh/2 - sh/6);
+skinPts[3] = Point(sw/2, sh/2 + sh/16);
+skinPts[4] = Point(sw/2 - sw/9, sh/2 + sh/16);
+skinPts[5] = Point(sw/2 + sw/9, sh/2 + sh/16);
+```
+
+Now, we just need to find some good lower  and upper bounds for the flood fill. Remember that this is being  performed in the Y'CrCb color space, so we basically decide how much the brightness can vary, how much the red component can vary, and how much  the blue component can vary. We want to allow the brightness to vary a  lot, to include shadows as well as highlights and reflections, but we  don't want the colors to vary much at all:
+
+```
+const int LOWER_Y = 60;
+ const int UPPER_Y = 80;
+ const int LOWER_Cr = 25;
+ const int UPPER_Cr = 15;
+ const int LOWER_Cb = 20;
+ const int UPPER_Cb = 15;
+ Scalar lowerDiff = Scalar(LOWER_Y, LOWER_Cr, LOWER_Cb);
+ Scalar upperDiff = Scalar(UPPER_Y, UPPER_Cr, UPPER_Cb);
+```
+
+We will use the floodFill() function with its default flags, except that we want to store to an external mask, so we must specify FLOODFILL_MASK_ONLY:
+
+```
+const int CONNECTED_COMPONENTS = 4; // To fill diagonally, use 8.
+const int flags = CONNECTED_COMPONENTS | FLOODFILL_FIXED_RANGE
+| FLOODFILL_MASK_ONLY; 
+Mat edgeMask = mask.clone(); // Keep a copy of the edge mask.
+// "maskPlusBorder" is initialized with edges to block floodFill().
+for (int i = 0; i < NUM_SKIN_POINTS; i++) {
+  floodFill(yuv, maskPlusBorder, skinPts[i], Scalar(), NULL,
+  lowerDiff, upperDiff, flags);
+}
+```
+
+The following image on the left-hand side  shows the six flood fill locations (shown as circles), and the  right-hand side of the image shows the external mask that is generated,  where the skin is shown as gray and edges are shown as white. Note that  the right-hand image was modified for this book so that skin pixels (of  value 1) are clearly visible:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/9e8f68aa-c6fe-4973-8e78-7f48e4b8251a.png)
+
+The mask image (shown on the right-hand side of the preceding image) now contains the following:
+
+- Pixels of value 255 for the edge pixels
+- Pixels of value 1 for the skin regions
+- Pixels of value 0 for the rest
+
+Meanwhile, edgeMask just contains edge pixels (as value 255). So to get just the skin pixels, we can remove the edges from it:
+
+```
+mask -= edgeMask;
+```
+
+The mask variable now just  contains 1s for skin pixels and 0s for non-skin pixels. To change the  skin color and brightness of the original image, we can use the cv::add() function with the skin mask to increase the green component in the original BGR image:
+
+```
+auto Red = 0;
+auto Green = 70;
+auto Blue = 0;
+add(smallImgBGR, CV_RGB(Red, Green, Blue), smallImgBGR, mask);
+```
+
+The following diagram shows the original  image on the left and the final alien cartoon image on the right, where  at least six parts of the face will now be green!
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5d7c5870-d7f8-4f64-af89-04118fc91711.png)
+
+Notice that we have made the skin look green but also brighter (to look like an alien that glows in the dark). If  you want to just change the skin color without making it brighter, you  can use other color changing methods, such as adding 70 to green while subtracting 70 from red and blue, or convert to the HSV color space using cvtColor(src, dst, "CV_BGR2HSV_FULL") and adjust the hue and saturation.
+
+## Reducing the random pepper noise from the sketch image
+
+Most of the tiny cameras in smartphones,  Raspberry Pi Camera Modules, and some webcams have significant image  noise. This is normally acceptable, but it has a big effect on our 5 x 5 Laplacian edge filter. The edge mask (shown as the sketch mode) will  often have thousands of small blobs of black pixels called **pepper noise**, made of several black pixels next to each other on a white background.  We are already using a median filter, which is usually strong enough to  remove pepper noise, but in our case it may not be strong enough. Our  edge mask is mostly a pure white background (value of 255) with some  black edges (value of 0) and the dots of noise (also value of 0). We  could use a standard closing morphological operator, but it will remove a lot of edges. So instead, we will apply a custom filter that removes  small black regions that are surrounded completely by white pixels. This will remove a lot of noise while having little effect on actual edges.
+
+We will scan the image for black pixels, and at each black pixel, we'll check the border of the 5 x 5 square around  it to see if all the 5 x 5 border pixels are white. If they are all  white, then we know we have a small island of black noise, so then we  fill the whole block with white pixels to remove the black island. For  simplicity in our 5 x 5 filter, we will ignore the two border pixels  around the image and leave them as they are.
+
+The following diagram shows the original image from an Android tablet on the left side, with a sketch  mode in the center, showing small black dots of pepper noise and the  result of our pepper noise removal shown on the right-hand side, where  the skin looks cleaner:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7211fa5b-df44-4c7e-b272-a850cbaf53cc.png)
+
+The following code can be named the removePepperNoise() function to edit the image in place for simplicity:
+
+```
+void removePepperNoise(Mat &mask)
+{
+    for (int y=2; y<mask.rows-2; y++) {
+    // Get access to each of the 5 rows near this pixel.
+    uchar *pUp2 = mask.ptr(y-2);
+    uchar *pUp1 = mask.ptr(y-1);
+    uchar *pThis = mask.ptr(y);
+    uchar *pDown1 = mask.ptr(y+1);
+    uchar *pDown2 = mask.ptr(y+2);
+ 
+    // Skip the first (and last) 2 pixels on each row.
+    pThis += 2;
+    pUp1 += 2;
+    pUp2 += 2;
+    pDown1 += 2;
+    pDown2 += 2;
+    for (auto x=2; x<mask.cols-2; x++) {
+       uchar value = *pThis; // Get pixel value (0 or 255).
+       // Check if it's a black pixel surrounded bywhite
+       // pixels (ie: whether it is an "island" of black).
+       if (value == 0) {
+          bool above, left, below, right, surroundings;
+          above = *(pUp2 - 2) && *(pUp2 - 1) && *(pUp2) && *(pUp2 + 1) 
+            && *(pUp2 + 2);
+          left = *(pUp1 - 2) && *(pThis - 2) && *(pDown1 - 2);
+          below = *(pDown2 - 2) && *(pDown2 - 1) && (pDown2) &&
+            (pDown2 + 1) && *(pDown2 + 2);
+          right = *(pUp1 + 2) && *(pThis + 2) && *(pDown1 + 2);
+          surroundings = above && left && below && right;
+          if (surroundings == true) {
+             // Fill the whole 5x5 block as white. Since we
+             // knowthe 5x5 borders are already white, we just
+             // need tofill the 3x3 inner region.
+             *(pUp1 - 1) = 255;
+             *(pUp1 + 0) = 255;
+             *(pUp1 + 1) = 255;
+             *(pThis - 1) = 255;
+             *(pThis + 0) = 255;
+             *(pThis + 1) = 255;
+             *(pDown1 - 1) = 255;
+             *(pDown1 + 0) = 255;
+             *(pDown1 + 1) = 255;
+             // Since we just covered the whole 5x5 block with
+             // white, we know the next 2 pixels won't be
+             // black,so skip the next 2 pixels on the right.
+             pThis += 2;
+             pUp1 += 2;
+             pUp2 += 2;
+             pDown1 += 2;
+             pDown2 += 2;
+         }
+       }
+       // Move to the next pixel on the right.
+       pThis++;
+       pUp1++;
+       pUp2++;
+       pDown1++;
+       pDown2++;
+       }
+    }
+ }
+```
+
+That's all! Run the app in the different modes until you are ready to port it to the embedded device!
+
+## Porting from desktop to an embedded device
+
+Now that the program works on the desktop,  we can make an embedded system from it. The details given here are  specific to Raspberry Pi, but similar steps apply when developing for  other embedded Linux systems such as BeagleBone, ODROID, Olimex, Jetson, and so on.
+
+There are several different options for  running our code on an embedded system, each with some advantages and  disadvantages in different scenarios.
+
+There are two common methods for compiling the code for an embedded device:
+
+- Copy the source code from the desktop onto the device and compile it directly on board the device. This is often referred to as **native compilation** since we are compiling our code natively on the same system that it will eventually run on.
+- Compile all the code on the desktop but using special methods to  generate code for the device, and then you copy the final executable  program onto the device. This is often referred to as **cross-compilation** since you need a special compiler that knows how to generate code for other types of CPUs.
+
+Cross-compilation is  often significantly harder to configure than native compilation,  especially if you are using many shared libraries, but since your  desktop is usually a lot faster than your embedded device,  cross-compilation is often much faster at compiling large projects. If  you expect to be compiling your project hundreds of times, in order to  work on it for months, and your device is quite slow compared to your  desktops, such as the Raspberry Pi 1 or Raspberry Pi Zero, which are  very slow compared to a desktop, then cross-compilation is a good idea.  But in most cases, especially for small, simple projects, you should  just stick with native compilation since it is easier.
+
+Note that all the libraries used by your  project will also need to be compiled for the device, so you will need  to compile OpenCV for your device. Natively compiling OpenCV on a  Raspberry Pi 1 can take hours, whereas cross-compiling OpenCV on a  desktop might take just 15 minutes. But you usually only need to compile OpenCV once and then you'll have it for all your projects, so it is  still worth sticking with native compilation of your project (including  the native compilation of OpenCV) in most cases.
+
+There are also several options for how to run the code on an embedded system:
+
+- Use the same input and output methods you used on the desktop, such  as the same video files, USB webcam, or keyboard as input, and display  text or graphics on an HDMI monitor in the same way you were doing on  the desktop.
+- Use special devices for input and output. For example, instead of  sitting at a desk using a USB webcam and keyboard as input and  displaying the output on a desktop monitor, you could use the special  Raspberry Pi Camera Module for video input, use custom GPIO push buttons or sensors for input, and use a 7-inch MIPI DSI screen or GPIO LED  lights as the output, and then by powering it all with a common **portable USB charger**, you can be wearing the whole computer platform in your backpack or attaching it on your bicycle!
+- Another option is to stream data in or out of the embedded device to other computers, or even use one device to stream out the camera data  and one device to use that data. For example, you can use the GStreamer  framework to configure the Raspberry Pi to stream H.264 compressed video from its camera module to the Ethernet network or through Wi-Fi, so  that a powerful PC or server rack on the local network or the Amazon AWS cloud computing services can process the video stream somewhere else.  This method allows a small and cheap camera device to be used in a  complex project requiring large processing resources located somewhere  else.
+
+If you do wish to perform computer vision on board the device, be aware that some low-cost embedded devices such as  Raspberry Pi 1, Raspberry Pi Zero, and BeagleBone Black have  significantly less computing power than desktops or even cheap netbooks  or smartphones, perhaps 10-50 times slower than your desktop, so  depending on your application you might need a powerful embedded device  or stream video to a separate computer, as mentioned previously. If you  don't need much computing power (for example, you only need to process  one frame every 2 seconds, or you only need to use 160 x 120 image  resolution), then a Raspberry Pi Zero running some computer vision on  board might be fast enough for your requirements. But many computer  vision systems need far more computing power, and so if you want to  perform computer vision on board the device, you will often want to use a much faster device with a CPU in the range of 2 GHz, such as a  Raspberry Pi 3, ODROID-XU4, or Jetson TK1.
+
+## Equipment setup to develop code for an embedded device
+
+Let's begin by keeping it as simple as  possible, by using a USB keyboard and mouse and an HDMI monitor just  like our desktop system, compiling the code natively on the device, and  running our code on the device. Our first step will be to copy the code  onto the device, install the build tools, and compile OpenCV and our  source code on the embedded system.
+
+Many embedded devices such as Raspberry Pi  have an HDMI port and at least one USB port. Therefore, the easiest way  to start using an embedded device is to plug in an HDMI monitor and USB  keyboard and mouse for the device, to configure settings and see the  output, while doing the code development and testing using your desktop  machine. If you have a spare HDMI monitor, plug that into the device,  but if you don't have a spare HDMI monitor, you might consider buying a  small HDMI screen just for your embedded device.
+
+Also, if you don't have a spare USB keyboard and mouse, you might consider buying a wireless keyboard and mouse that has a single USB wireless dongle, so you only use up a single USB port  for both the keyboard and mouse. Many embedded devices use a 5V power  supply, but they usually need more power (electrical current) than a  desktop or laptop will provide in its USB port. So, you should obtain  either a separate 5V USB charger (at least 1.5 amps, ideally 2.5 amps)  or a portable USB battery charger that can provide at least 1.5 amps of  output current. Your device might only use 0.5 amps most of the time,  but there will be occasional times when it needs over 1 amp, so it's  important to use a power supply that is rated for at least 1.5 amps or  more, otherwise your device will occasionally reboot, or some hardware  could behave strangely at important times, or the filesystem could  become corrupt and you lose your files! A 1 amp supply might be good  enough if you don't use cameras or accessories, but 2.0-2.5 amps is  safer.
+
+For example, the following photographs show a convenient setup containing a Raspberry Pi 3, a good quality 8 GB  micro-SD card for $10 (http://ebay.to/2ayp6Bo), a 5-inch HDMI resistive touchscreen for $30-$45 (http://bit.ly/2aHQO2G), a wireless USB keyboard and mouse for $30 (http://ebay.to/2aN2oXi), a **5V 2.5 A** power supply for $5 (https://amzn.to/2UafanD), a USB webcam such as the very fast **PS3 Eye** for just $5 (http://ebay.to/2aVWCUS), a Raspberry Pi Camera Module v1 or v2 for $15-$30 (http://bit.ly/2aF9PxD), and an Ethernet cable for $2 (http://ebay.to/2aznnjd), connecting the Raspberry Pi to the same LAN network as your development PC or laptop. Notice that this HDMI screen is designed specifically for the Raspberry Pi, since the screen plugs directly into the Raspberry Pi below it, and has an HDMI male-to-male adapter (shown in the right-hand photo) for the Raspberry Pi so you don't need an HDMI cable, whereas  other screens may require an HDMI cable (https://amzn.to/2Rvet6H), or MIPI DSI or SPI cable.
+
+Also note that some screens and touch panels need configuration before they will work, whereas most HDMI screens  should work without any configuration:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e27b2a0e-d6f5-4adb-a2ab-d3d14fe88515.png)
+
+Notice the black USB webcam (on the far left of the LCD), the Raspberry Pi Camera Module (green and black board  sitting on the top-left corner of the LCD), Raspberry Pi board  (underneath the LCD), HDMI adapter (connecting the LCD to the Raspberry  Pi underneath it), a blue Ethernet cable (plugged into a router), a  small USB wireless keyboard and mouse dongle, and a micro-USB power  cable (plugged into a **5V 2.5A** power supply).
+
+
+
+The following steps are specific to  Raspberry Pi, so if you are using a different embedded device or you  want a different type of setup, search the web about how to set up your  board. To set up an Raspberry Pi 1, 2, or 3 (including their variants  such as Raspberry Pi Zero, Raspberry Pi 2B, 3B, and so on, and Raspberry Pi 1A+ if you plug in a USB Ethernet dongle), follow these steps:
+
+1. Get a fairly new, good quality micro-SD card of at least 8 GB. If  you use a cheap micro-SD card or an old micro-SD card that you already  used many times before and it has degraded in quality, it might not be  reliable enough to boot the Raspberry Pi, so if you have trouble booting the Raspberry Pi, you should try a good quality Class 10 micro-SD card  (such as SanDisk Ultra or better) that says it handles at least 45 Mbps  or can handle 4K video.
+
+1. Download and burn the latest **Raspbian IMG** (not NOOBS) to the micro-SD card. Note that burning an IMG is different to simply copying the file to SD. Visit https://www.raspberrypi.org/documentation/installation/installing-images/ and follow the instructions for your desktop's OS to burn Raspbian to a  micro-SD card. Be aware that you will lose any files that were  previously on the card.
+2. Plug a USB keyboard, mouse, and HDMI display into the Raspberry Pi, so you can easily run some commands and see the output.
+3. Plug the Raspberry Pi into a 5V USB power supply with at least 1.5  A, ideally 2.5 A or higher. Computer USB ports aren't powerful enough.
+4. You should see many pages of text scrolling while it is booting up Raspbian Linux, then it should be ready after 1 or 2 minutes.
+5. If, after booting, it's just showing a black console screen with some text (such as if you downloaded **Raspbian Lite**), you are at the text-only login prompt. Log in by typing pi as the username and then hit *Enter*. Then, type raspberry as the password and hit *Enter* again.
+6. Or if it booted to the graphical display, click on the black **Terminal** icon at the top to open a shell (Command Prompt).
+7. Initialize some settings in your Raspberry Pi: 
+   - Type sudo raspi-config and hit *Enter* (see the following screenshot).
+   - First, run Expand Filesystem and then finish and reboot your device, so the Raspberry Pi can use the whole micro-SD card.
+   - If you use a normal (US) keyboard, not a British keyboard, in Internationalization Options, change to Generic 104-key keyboard, Other, English (US), and then for the AltGr and similar questions, just hit *Enter* unless you are using a special keyboard.
+   - In Enable Camera, enable the Raspberry Pi Camera Module.
+   - In Overclock Options, set to Raspberry Pi 2 or similar to the device runs faster (but generates more heat).
+   - In Advanced Options, enable the SSH server.
+   - In Advanced Options, if you are using Raspberry Pi 2 or 3, change Memory Split to 256 MB so the GPU has plenty of RAM for video processing. For Raspberry Pi 1 or Zero, use 64 MB or the default.
+   - Finish, then reboot the device.
+
+1. (Optional): Delete Wolfram to save 600 MB of space on your SD card:
+
+```
+sudo apt-get purge -y wolfram-engine
+```
+
+It can be reinstalled using sudo apt-get install wolfram-engine.
+
+To see the remaining space on your SD card, run df -h | head -2:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c09cd443-2373-4427-bf7a-95926b0200c2.png)
+
+1. Assuming you plugged the Raspberry Pi into your internet router, it  should already have internet access. So, update your Raspberry Pi to the latest Raspberry Pi firmware, software locations, OS, and software. **Warning**: many Raspberry Pi tutorials say you should run sudo rpi-update; however, in recent years, it's no longer a good idea to run rpi-update since it can give you an unstable system or firmware. The following  instructions will update your Raspberry Pi to have stable software and  firmware (note that these commands might take up to one hour):
+
+```
+sudo apt-get -y update
+sudo apt-get -y upgrade
+sudo apt-get -y dist-upgrade
+sudo reboot
+```
+
+1. Find the IP address of the device:
+
+```
+hostname -I
+```
+
+1. Try accessing the device from your desktop. For example, assume the device's IP address is 192.168.2.101. Enter this on a Linux desktop:
+
+```
+ssh-X pi@192.168.2.101
+```
+
+1. Or, do this on a Windows desktop:
+   1. Download, install, and run PuTTY
+   2. Then in PuTTY, connect to the IP address (192.168.2.101), as the user pi with the password raspberry
+2. Optionally, if you want your Command Prompt to be a different color  than the commands and show the error value after each command, use this:
+
+```
+nano ~/.bashrc
+```
+
+1. Add this line to the bottom:
+
+```
+PS1="[e[0;44m]u@h: w ($?) $[e[0m] "
+```
+
+1. Save the file (hit *Ctrl* + *X*, then hit *Y*, and then hit *Enter*).
+2. Start using the new settings:
+
+```
+source ~/.bashrc
+```
+
+1. To prevent the screensaver/screen blank power saving feature in Raspbian from turning off your screen on idle, use this:
+
+```
+sudo nano /etc/lightdm/lightdm.conf
+```
+
+1. And follow these steps: 
+   1. Look for the line that says #xserver-command=X (jump to line 87 by pressing *Alt* + *G* and then typing 87 and hitting *Enter*).
+   2. Change it to xserver-command=X -s 0 dpms.
+   3. Save the file (hit *Ctrl* + *X,* then hit *Y,* then hit *Enter*).
+2. Finally, reboot the Raspberry Pi:
+
+```
+sudo reboot
+```
+
+You should be ready to start developing on the device now!
+
+## Installing OpenCV on an embedded device
+
+There is a very easy way to install OpenCV and all its dependencies on a Debian-based embedded device such as Raspberry Pi:
+
+```
+sudo apt-get install libopencv-dev
+```
+
+However, that might install an old version of OpenCV from one or two years ago.
+
+To install the latest version of OpenCV on  an embedded device such as Raspberry Pi, we need to build OpenCV from  the source code. First, we install a compiler and build system, then  libraries for OpenCV to use, and finally OpenCV itself. Note that the  steps for compiling OpenCV from source on Linux are the same whether you are compiling for desktop or for embedded systems. A Linux script, install_opencv_from_source.sh, is provided with this book; it is recommended you copy the file onto  your Raspberry Pi (for example, with a USB flash stick) and run the  script to download, build, and install OpenCV, including potential  multi-core CPU and **ARM NEON SIMD** optimizations (depending on hardware support):
+
+```
+chmod +x install_opencv_from_source.sh
+ ./install_opencv_from_source.sh
+```
+
+The script will  stop if there is an error, for example, if you don't have internet  access or a dependency package conflicts with something else you already installed. If the script stops with an error, try using info on the web to solve that error, then run the script again. The script will quickly check all the previous steps and then continue from where it finished  last time. Note that it will take between 20 minutes and 12 hours  depending on your hardware and software!
+
+It's highly recommended to build and run a  few OpenCV samples every time you install OpenCV, so when you have  problems building your own code, at least you will know whether the  problem is the OpenCV installation or a problem with your code.
+
+Let's try to build the simple edge sample program. If we try the same Linux command to build it from OpenCV 2, we get a build error:
+
+```
+cd ~/opencv-4.*/samples/cpp
+ g++ edge.cpp -lopencv_core -lopencv_imgproc -lopencv_highgui
+ -o edge
+ /usr/bin/ld: /tmp/ccDqLWSz.o: undefined reference to symbol '_ZN2cv6imreadERKNS_6StringEi'
+ /usr/local/lib/libopencv_imgcodecs.so.4..: error adding symbols: DSO missing from command line
+ collect2: error: ld returned 1 exit status
+```
+
+The second to last line of that error  message tells us that a library was missing from the command line, so we simply need to add -lopencv_imgcodecs in our command next to the other OpenCV libraries we linked to. Now, you know how to fix the  problem anytime you are compiling an OpenCV 3 program and you see that  error message. So, let's do it correctly:
+
+```
+cd ~/opencv-4.*/samples/cpp
+ g++ edge.cpp -lopencv_core -lopencv_imgproc -lopencv_highgui
+ -lopencv_imgcodecs -o edge
+```
+
+It worked! So, now you can run the program:
+
+```
+./edge
+```
+
+Hit *Ctrl* + *C* on your keyboard to quit the program. Note that the edge program might crash if you try running the command in an SSH Terminal and you  don't redirect the window to display on the device's LCD screen. So, if  you are using SSH to remotely run the program, add DISPLAY=:0 before your command:
+
+```
+DISPLAY=:0 ./edge
+```
+
+You should also plug a USB webcam into the device and test that it works:
+
+```
+g++ starter_video.cpp -lopencv_core -lopencv_imgproc
+ -lopencv_highgui -lopencv_imgcodecs -lopencv_videoio \
+ -o starter_video
+ DISPLAY=:0 ./starter_video 0
+```
+
+Note: if you don't have a USB webcam, you can test using a video file:
+
+```
+DISPLAY=:0 ./starter_video ../data/768x576.avi
+```
+
+Now that OpenCV is successfully installed on your device, you can run the Cartoonifier applications we developed  earlier. Copy the Cartoonifier folder onto the device (for example, by using a USB flash stick, or using scp to copy files over the network). Then, build the code just like you did for the desktop:
+
+```
+cd ~/Cartoonifier
+ export OpenCV_DIR="~/opencv-3.1.0/build"
+ mkdir build
+ cd build
+ cmake -D OpenCV_DIR=$OpenCV_DIR ..
+ make
+```
+
+And run it:
+
+```
+DISPLAY=:0 ./Cartoonifier
+```
+
+And if all is fine, we will see a window with our application running as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7e425558-2663-41d6-bcb6-381a649947ff.png)
+
+## Using the Raspberry Pi Camera Module
+
+While using a USB webcam on Raspberry Pi has the convenience of supporting identical behavior and code on the  desktop as on an embedded device, you might consider using one of the  official Raspberry Pi Camera Modules (referred to as the **Raspberry Pi Cams**). They have some advantages and disadvantages over USB webcams.
+
+The Raspberry Pi Cams use the special MIPI  CSI camera format, designed for smartphone cameras to use less power.  They have a smaller physical size, faster bandwidth, higher resolutions, higher frame rates, and reduced latency compared to USB. Most USB 2.0  webcams can only deliver 640 x 480 or 1280 x 720 30 FPS video since USB  2.0 is too slow for anything higher (except for some expensive USB  webcams that perform onboard video compression) and USB 3.0 is still too expensive. However, smartphone cameras (including the Raspberry Pi  Cams) can often deliver 1920 x 1080 30 FPS or even Ultra HD/4K  resolutions. The Raspberry Pi Cam v1 can, in fact, deliver upto 2592 x  1944 15 FPS or 1920 x 1080 30 FPS video even on a $5 Raspberry Pi Zero,  thanks to the use of MIPI CSI for the camera and compatible video  processing ISP and GPU hardware inside the Raspberry Pi. The Raspberry  Pi Cams also support 640 x 480 in 90 FPS mode (such as for slow-motion  capture), and this is quite useful for real-time computer vision so you  can see very small movements in each frame, rather than large movements  that are harder to analyze.
+
+However, the Raspberry Pi Cam is a plain circuit board that is *highly sensitive* to electrical interference, static electricity, or physical damage (simply touching the small, flat orange cable with your finger can cause video  interference or even permanently damage your camera!). The big flat  white cable is far less sensitive but it is still very sensitive to  electrical noise or physical damage. The Raspberry Pi Cam comes with a  very short 15 cm cable. It's possible to buy third-party cables on eBay  with lengths between 5 cm and 1 m, but cables 50 cm or longer are less  reliable, whereas USB webcams can use 2 m to 5 m cables and can be  plugged into USB hubs or active extension cables for longer distances.
+
+There are currently several different  Raspberry Pi Cam models, notably the NoIR version that doesn't have an  internal infrared filter; therefore, a NoIR camera can easily see in the dark (if you have an invisible infrared light source), or see infrared  lasers or signals far clearer than regular cameras that include an  infrared filter inside them. There are also two different versions of  Raspberry Pi Cam: Raspberry Pi Cam v1.3 and Raspberry Pi Cam v2.1, where v2.1 uses a wider angle lens with a Sony 8 megapixel sensor instead of a 5 megapixel **OmniVision** sensor, has better support  for motion in low lighting conditions, and adds support for 3240 x 2464  video at 15 FPS and potentially up to 120 FPS video at 720p. However,  USB webcams come in thousands of different shapes and versions, making  it easy to find specialized webcams such as waterproof or  industrial-grade webcams, rather than requiring you to create your own  custom housing for a Raspberry Pi Cam.
+
+IP cameras are also another option for a camera interface that can  allow 1080p or higher resolution videos with Raspberry Pi, and IP  cameras support not just very long cables, but potentially even work  anywhere in the world using the internet. But IP cameras aren't quite as easy to interface with OpenCV as USB webcams or Raspberry Pi Cams.
+
+In the past, Raspberry Pi Cams and the official drivers weren't  directly compatible with OpenCV; you often used custom drivers and  modified your code in order to grab frames from Raspberry Pi Cams, but  it's now possible to access a Raspberry Pi Cam in OpenCV in the exact  same way as a USB webcam! Thanks to recent improvements in the v4l2  drivers, once you load the v4l2 driver, the Raspberry Pi Cam will appear as a /dev/video0 or /dev/video1 file like a regular USB webcam. So, traditional OpenCV webcam code such as cv::VideoCapture(0) will be able to use it just like a webcam.
+
+## Installing the Raspberry Pi Camera Module driver
+
+First, let's temporarily load the v4l2 driver for the Raspberry Pi Cam to make sure our camera is plugged in correctly:
+
+```
+sudo modprobe bcm2835-v4l2
+```
+
+If the command failed (if it printed an error message to the console, it froze, or the command returned a number besides 0), then perhaps your camera is not plugged in correctly. Shut down and  then unplug power from your Raspberry Pi and try attaching the flat  white cable again, looking at photos on the web to make sure it's  plugged in the correct way around. If it is the correct way around, it's possible the cable wasn't fully inserted before you closed the locking  tab on the Raspberry Pi. Also, check whether you forgot to click Enable Camera when configuring your Raspberry Pi earlier, using the sudoraspi-config command.
+
+If the command worked (if the command returned 0 and no error was printed to the console), then we can make sure the  v4l2 driver for the Raspberry Pi Cam is always loaded on bootup by  adding it to the bottom of the /etc/modules file:
+
+```
+sudo nano /etc/modules
+ # Load the Raspberry Pi Camera Module v4l2 driver on bootup:
+ bcm2835-v4l2
+```
+
+After you save the file and reboot your Raspberry Pi, you should be able to run ls /dev/video* to see a list of cameras available on your Raspberry Pi. If the Raspberry  Pi Cam is the only camera plugged into your board, you should see it as  the default camera (/dev/video0), or if you also have a USB webcam plugged in, then it will be either /dev/video0 or /dev/video1.
+
+Let's test the Raspberry Pi Cam using the starter_video sample program we compiled earlier:
+
+```
+cd ~/opencv-4.*/samples/cpp
+ DISPLAY=:0 ./starter_video 0
+```
+
+If it's showing the wrong camera, try DISPLAY=:0 ./starter_video 1.
+
+Now that we know the Raspberry Pi Cam is working in OpenCV, let's try Cartoonifier:
+
+```
+cd ~/Cartoonifier
+ DISPLAY=:0 ./Cartoonifier 0
+```
+
+Or, use DISPLAY=:0 ./Cartoonifier 1 for the other camera.
+
+## Making Cartoonifier run in fullscreen
+
+In embedded systems, you often want your  application to be fullscreen and hide the Linux GUI and menu. OpenCV  offers an easy method to set the fullscreen window property, but make  sure you created the window using the NORMAL flag:
+
+```
+// Create a fullscreen GUI window for display on the screen.
+ namedWindow(windowName, WINDOW_NORMAL);
+ setWindowProperty(windowName, PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
+```
+
+## Hiding the mouse cursor
+
+You might notice the mouse cursor is shown  on top of your window even though you don't want to use a mouse in your  embedded system. To hide the mouse cursor, you can use the xdotool command to move it to the bottom-right corner pixel, so it's not noticeable,  but is still available if you want to occasionally plug in your mouse to debug the device. Install xdotool and create a short Linux script to run it with Cartoonifier:
+
+```
+sudo apt-get install -y xdotool
+ cd ~/Cartoonifier/build
+```
+
+After installing xdotool, now is the time to create the script, create a new file with your favorite editor with the name runCartoonifier.sh and the following content:
+
+```
+ #!/bin/sh
+ # Move the mouse cursor to the screen's bottom-right pixel.
+ xdotoolmousemove 3000 3000
+ # Run Cartoonifier with any arguments given.
+ /home/pi/Cartoonifier/build/Cartoonifier "$@"
+```
+
+Finally, make your script executable:
+
+```
+chmod +x runCartoonifier.sh
+```
+
+Try running your script to make sure it works:
+
+```
+DISPLAY=:0 ./runCartoonifier.sh
+```
+
+## Running Cartoonifier automatically after bootup
+
+Often, when you build an embedded device,  you want your application to be executed automatically after the device  has booted up, rather than requiring the user to manually run your  application. To automatically run our application after the device has  fully booted up and logged in to the graphical desktop, create an autostart folder with a file in it with these contents, including the full path to your script or application:
+
+```
+mkdir ~/.config/autostart
+ nano ~/.config/autostart/Cartoonifier.desktop
+ [Desktop Entry]
+ Type=Application
+ Exec=/home/pi/Cartoonifier/build/runCartoonifier.sh
+ X-GNOME-Autostart-enabled=true
+```
+
+Now, whenever you turn the device on or reboot it, Cartoonifier will begin running!
+
+## Speed comparison of Cartoonifier on desktop versus embedded
+
+You will notice that the code runs much  slower on Raspberry Pi than on your desktop! By far the two easiest ways to run it faster are to use a faster device or use a smaller camera  resolution. The following table shows some frame rates, **frames per seconds** (**FPS**), for both the s*ketch* and *paint* modes of Cartoonifier on a desktop, Raspberry Pi 1, Raspberry Pi 2, Raspberry Pi 3, and Jetson TK1. Note that the speeds don't have any custom  optimizations and only run on a single CPU core, and the timings include the time for rendering images to the screen. The USB webcam used is the fast PS3 Eye webcam running at 640 x 480 since it is the fastest  low-cost webcam on the market.
+
+It's worth mentioning that Cartoonifier is  only using a single CPU core, but all the devices listed have four CPU  cores except for Raspberry Pi 1, which has a single core, and many x86  computers have hyperthreading to give roughly eight CPU cores. So, if  you wrote your code to efficiently make use of multiple CPU cores (or  GPU), the speeds might be 1.5 to 3 times faster than the single-threaded figures shown:
+
+| **Computer**      | **Sketch mode** | **Paint mode**             |
+| ----------------- | --------------- | -------------------------- |
+| Intel Core i7 PC  | 20 FPS          | 2.7 FPS                    |
+| Jetson TK1ARM CPU | 16 FPS          | 2.3 FPS                    |
+| Raspberry Pi 3    | 4.3 FPS         | 0.32 FPS (3 seconds/frame) |
+| Raspberry Pi 2    | 3.2 FPS         | 0.28 FPS (4 seconds/frame) |
+| Raspberry Pi Zero | 2.5 FPS         | 0.21 FPS (5 seconds/frame) |
+| Raspberry Pi 1    | 1.9 FPS         | 0.12 FPS (8 seconds/frame) |
+
+ 
+
+Notice that Raspberry Pi is extremely slow at running the code, especially the *paint* mode, so we will try simply changing the camera and the resolution of the camera.
+
+## Changing the camera and camera resolution
+
+The following table shows how the speed of the *sketch* mode compares on Raspberry Pi 2 using different types of cameras and different camera resolutions:
+
+| **Hardware**                         | **640 x 480 resolution** | **320 x 240 resolution** |
+| ------------------------------------ | ------------------------ | ------------------------ |
+| Raspberry Pi 2 with Raspberry Pi Cam | 3.8 FPS                  | 12.9 FPS                 |
+| Raspberry Pi 2 with PS3 Eye webcam   | 3.2 FPS                  | 11.7 FPS                 |
+| Raspberry Pi 2 with unbranded webcam | 1.8 FPS                  | 7.4 FPS                  |
+
+ 
+
+As you can see, when using the Raspberry Pi  Cam in 320 x 240, it seems we have a good enough solution to have some  fun, even if it's not in the 20-30 FPS range that we would prefer.
+
+## Power draw of Cartoonifier running on desktop versus embedded system
+
+We've seen that various embedded devices are slower than desktops, from the Raspberry Pi 1 being roughly 20 times  slower than a desktop, up to Jetson TK1 being roughly 1.5 times slower  than a desktop. But for some tasks, low speed is acceptable if it means  there will also be significantly lower battery draw, allowing for small  batteries or low year-round electricity costs for a server, or low heat  generation.
+
+Raspberry Pi has different models even for  the same processor, such as Raspberry Pi 1B, Zero, and 1A+, which all  run at similar speeds but have significantly different power draws. MIPI CSI cameras such as the Raspberry Pi Cam also use less electricity than webcams. The following table shows how much electrical power is used by different hardware running the same Cartoonifier code. Power  measurements of Raspberry Pi were performed as shown in the following  photo using a simple USB current monitor (for example, J7-T Safety  Tester (http://bit.ly/2aSZa6H) for $5) and a DMM multimeter for the other devices:
+
+
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/59bebd50-6d37-4cf6-afec-bfa24bbba598.png)
+
+**Idle power** measures power when the computer is running but no major applications are being used, whereas **Cartoonifier power** measures power when Cartoonifier is running. **Efficiency** is Cartoonifier power/Cartoonifier speed in a 640 x 480 *sketch* mode:
+
+| **Hardware**                   | **Idle power** | **Cartoonifier power** | **Efficiency**          |
+| ------------------------------ | -------------- | ---------------------- | ----------------------- |
+| Raspberry Pi Zero with PS3 Eye | 1.2 Watts      | 1.8 Watts              | 1.4 Frames per Watt     |
+| Raspberry Pi 1A+ with PS3 Eye  | **1.1 Watts**  | **1.5 Watts**          | 1.1 Frames per Watt     |
+| Raspberry Pi 1B with PS3 Eye   | 2.4 Watts      | 3.2 Watts              | 0.5 Frames per Watt     |
+| Raspberry Pi 2B with PS3 Eye   | 1.8 Watts      | 2.2 Watts              | 1.4 Frames per Watt     |
+| Raspberry Pi 3B with PS3 Eye   | 2.0 Watts      | 2.5 Watts              | 1.7 Frames per Watt     |
+| Jetson TK1 with PS3 Eye        | 2.8 Watts      | 4.3 Watts              | **3.7 Frames per Watt** |
+| Core i7 laptop with PS3 Eye    | 14.0 Watts     | 39.0 Watts             | 0.5 Frames per Watt     |
+
+ 
+
+We can see that Raspberry Pi 1A+ uses the  least power, but the most power efficient options are Jetson TK1 and  Raspberry Pi 3B. Interestingly, the original Raspberry Pi (Raspberry Pi  1B) has roughly the same efficiency as an x86 laptop. All later  Raspberry Pis are significantly more power efficient than the original  (Raspberry Pi 1B).
+
+**Disclaimer**: The author is a former employee of NVIDIA, which produced the Jetson TK1,  but the results and conclusions are believed to be authentic.
+
+Let's also look at the power draw of different cameras that work with Raspberry Pi:
+
+| **Hardware**                                 | **Idle power** | **Cartoonifier power** | **Efficiency**          |
+| -------------------------------------------- | -------------- | ---------------------- | ----------------------- |
+| Raspberry Pi Zero with PS3 Eye               | 1.2 Watts      | 1.8 Watts              | 1.4 Frames per Watt     |
+| Raspberry Pi Zero with Raspberry Pi Cam v1.3 | 0.6 Watts      | 1.5 Watts              | 2.1 Frames per Watt     |
+| Raspberry Pi Zero with Raspberry Pi Cam v2.1 | **0.55 Watts** | **1.3 Watts**          | **2.4 Frames per Watt** |
+
+ 
+
+We see that Raspberry Pi Cam v2.1 is  slightly more power efficient than Raspberry Pi Cam v1.3 and  significantly more power efficient than a USB webcam.
+
+## Streaming video from Raspberry Pi to a powerful computer
+
+Thanks to the hardware-accelerated video  encoders in all modern ARM devices, including Raspberry Pi, a valid  alternative to performing computer vision on board an embedded device is to use the device to just capture video and stream it across a network  in real time to a PC or server rack. All Raspberry Pi models contain the same video encoder hardware, so an Raspberry Pi 1A+ or Raspberry Pi  Zero with a Pi Cam is quite a good option for a low-cost, low-power  portable video streaming server. Raspberry Pi 3 adds Wi-Fi for  additional portable functionality.
+
+There are numerous ways live camera video  can be streamed from a Raspberry Pi, such as using the official  Raspberry Pi V4L2 camera driver to allow the Raspberry Pi Cam to appear  like a webcam, then using GStreamer, liveMedia, netcat, or VLC to stream the video across a network. However, these methods often introduce one  or two seconds of latency and often require customizing the OpenCV  client code or learning how to use GStreamer efficiently. So instead,  the following section will show how to perform both the camera capture  and network streaming using an alternative camera driver named **UV4L**:
+
+1. Install UV4L on the Raspberry Pi by following the instructions at http://www.linux-projects.org/uv4l/installation/:
+
+```
+curl http://www.linux-projects.org/listing/uv4l_repo/lrkey.asc
+ sudo apt-key add -
+ sudo su
+ echo "# UV4L camera streaming repo:">> /etc/apt/sources.list
+ echo "deb http://www.linux-
+ projects.org/listing/uv4l_repo/raspbian/jessie main">>
+ /etc/apt/sources.list
+ exit
+ sudo apt-get update
+ sudo apt-get install uv4l uv4l-raspicam uv4l-server
+```
+
+1. Run the UV4L streaming server manually (on the Raspberry Pi) to check that it works:
+
+```
+sudo killall uv4l
+ sudo LD_PRELOAD=/usr/lib/uv4l/uv4lext/armv6l/libuv4lext.so
+ uv4l -v7 -f --sched-rr --mem-lock --auto-video_nr
+ --driverraspicam --encoding mjpeg
+ --width 640 --height 480 --framerate15
+```
+
+1. Test the camera's network stream from your desktop, following these steps to check all is working fine: 
+   - Install VLC Media Player.
+   - Navigate to Media | Open Network Stream and enter http://192.168.2.111:8080/stream/video.mjpeg.
+   - Adjust the URL to the IP address of your Raspberry Pi. Run hostname -I on Raspberry Pi to find its IP address.
+2. Run the UV4L server automatically on bootup:
+
+```
+sudo apt-get install uv4l-raspicam-extras
+```
+
+1. Edit any UV4L server settings you want in uv4l-raspicam.conf, such as resolution and frame rate to customize the streaming:
+
+```
+sudo nano /etc/uv4l/uv4l-raspicam.conf
+ drop-bad-frames = yes
+ nopreview = yes
+ width = 640
+ height = 480
+ framerate = 24
+```
+
+You will need to reboot to make all changes take effect.
+
+1. Tell OpenCV to use our network stream as if it was a webcam. As long as your installation of OpenCV can use FFMPEG internally, OpenCV will  be able to grab frames from an MJPEG network stream just like a webcam:
+
+```
+./Cartoonifier http://192.168.2.101:8080/stream/video.mjpeg
+```
+
+Your Raspberry Pi is now using UV4L to stream the live 640 x 480 24 FPS video to a PC that is running Cartoonifier in *sketch* mode, achieving roughly 19 FPS (with 0.4 seconds of latency). Notice this is  almost the same speed as using the PS3 Eye webcam directly on the PC (20 FPS)!
+
+Note that when you are streaming the video  to OpenCV, it won't be able to set the camera resolution; you need to  adjust the UV4L server settings to change the camera resolution. Also  note that instead of streaming MJPEG, we could have streamed H.264  video, which uses a lower bandwidth, but some computer vision algorithms don't handle video compression such as H.264 very well, so MJPEG will  cause fewer algorithm problems than H.264.
+
+If you have both the official Raspberry Pi V4L2 driver and the UV4L driver installed, they will both be available as cameras 0 and 1 (devices /dev/video0 and /dev/video1), but you can only use one camera driver at a time.
+
+## Customizing your embedded system!
+
+Now that you have created a whole embedded  Cartoonifier system, and you know the basics of how it works and which  parts do what, you should customize it! Make the video full screen,  change the GUI, change the application behavior and workflow, change the Cartoonifier filter constants or the skin detector algorithm, replace  the Cartoonifier code with your own project ideas, or stream the video  to the cloud and process it there!
+
+You can improve the skin detection algorithm in many ways, such as using a more complex skin detection algorithm  (for example, using trained Gaussian models from many recent CVPR or  ICCV conference papers at [http://www.cvpapers.com](http://www.cvpapers.com/)), or add face detection (see the *Face detection* section of [Chapter 5](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/86c5b037-c45d-4622-9131-078fca1cf397.xhtml), *Face Detection and Recognition with the DNN Module*) to the skin detector, so it detects where the user's face is, rather  than asking the user to put their face in the center of the screen. Be  aware that face detection may take many seconds on some devices or  high-resolution cameras, so they may be limited in their current  real-time uses. But embedded system platforms are getting faster every  year, so this may be less of a problem over time.
+
+The most significant way to speed up  embedded computer vision applications is to reduce the camera resolution absolutely as much as possible (for example, 0.5 megapixels instead of 5 megapixels), allocate and free images as rarely as possible, and  perform image format conversions as rarely as possible. In some cases,  there might be some optimized image processing or math libraries, or an  optimized version of OpenCV from the CPU vendor of your device (for  example, Broadcom, NVIDIA Tegra, Texas Instruments OMAP, or Samsung  Exynos), or for your CPU family (for example, ARM Cortex-A9).
+
+## Summary
+
+This chapter has shown several different  types of image processing filters that can be used to generate various  cartoon effects, from a plain sketch mode that looks like a pencil  drawing, a paint mode that looks like a color painting, to a cartoon  mode that overlays the *sketch* mode on top of the paint mode to  appear like a cartoon. It also shows that other fun effects can be  obtained, such as the evil mode, which greatly enhanced noisy edges and  the alien mode, which changed the skin of a face to appear bright green.
+
+There are many commercial smartphone apps  that add similar fun effects on the user's face, such as cartoon filters and skin color changes. There are also professional tools using similar concepts, such as skin-smoothing video post-processing tools that  attempt to beautify women's faces by smoothing their skin while keeping  the edges and non-skin regions sharp, in order to make their faces  appear younger.
+
+This chapter shows how to port the  application from a desktop to an embedded system by following the  recommended guidelines of developing a working desktop version first,  and then porting it to an embedded system and creating a user interface  that is suitable for the embedded application. The image processing code is shared between the two projects so that the reader can modify the  cartoon filters for the desktop application, and easily see those  modifications in the embedded system as well.
+
+Remember that this book includes an OpenCV installation script for Linux and full source code for all projects discussed.
+
+In the next chapter, we are going to learn how to use **multiple view stereo** (**MVS**) and **structure from motion** (**SfM**) for 3D reconstruction, and how to export the final result in OpenMVG format.
+
+# Chapter 02 Explore Structure from Motion with the SfM Module
+
+# Chapter 03 Face Landmark and Pose with the Face Module
+
+# Chapter 04 Number Plate Recognition with Deep Convolutional Networks
+
+# Chapter 05 Face Detection and Recognition with the DNN Module
+
+# Chapter 06 Introduction to Web Computer Vision with OpenCV.js
+
+# Chapter 07 Android Camera Calibration and AR Using ArUco Module
+
+
+
 # Chapter 8 iOS Panoramas with the Stitching Module
 
 Panoramic imaging has existed since the early days of photography. In those ancient times, roughly 150 years ago, it was called the art of **panography**, carefully putting together individual images using tape or glue to  recreate a panoramic view. With the advancement of computer vision,  panorama stitching became a handy tool in almost all digital cameras and mobile devices. Nowadays, creating panoramas is as simple as swiping  the device or camera across the view, the stitching calculations happen  immediately, and the final expanded scene is available for viewing. In  this chapter, we will implement a modest panoramic image stitching  application on the iPhone using OpenCV's precompiled library for iOS. We will first examine a little of the math and theory behind image  stitching, choose the relevant OpenCV functions to implement it, and  finally integrate it into an iOS app with a basic UI.
@@ -33,7 +1012,7 @@ The following topics will be covered in this chapter:
 - Building a Swift iOS application UI for panorama capturing
 - Integrating OpenCV component written in Objective C++ with the Swift application
 
-# Technical requirements
+## Technical requirements
 
 The following technologies and installations are required to recreate the contents of this chapter:
 
@@ -47,7 +1026,7 @@ Build instructions for the preceding components, as well as the code  to impleme
 
 The code for this chapter can be accessed via GitHub: https://github.com/PacktPublishing/Mastering-OpenCV-4-Third-Edition/tree/master/Chapter_08.
 
-# Panoramic image stitching methods
+## Panoramic image stitching methods
 
 Panoramas are essentially multiple images fused together into a  single image. The process of panorama creation from multiple images  involves many steps; some are common to other computer vision tasks,  such as the following:
 
@@ -62,7 +1041,7 @@ Some of these basic operations are also commonplace in **Structure-from-Motion**
 
 In this section, we will briefly review feature matching, camera pose estimation, and image warping. In reality, panorama stitching has  multiple pathways and classes, depending on the type of input and  required output. For example, if the camera has a fisheye lens (with an  extremely high degree view angle) a special process is needed.
 
-# Feature extraction and robust matching for panoramas
+## Feature extraction and robust matching for panoramas
 
 We create panoramas from overlapping images. In the overlapping region, we look for common visual features that **register** (align) the two images together. In SfM or SLAM, we do this on a frame-by-frame basis, looking for matching features in a real-time video sequence  where the overlap between frames is extremely high. However, in  panoramas we get frames with a big motion component between them, where  the overlap might be as low as just 10%-20% of the image. At first, we  extract image features, such as the **scale invariant feature transform (SIFT)**, **speeded up robust features** (**SURF**), **oriented BRIEF** (**ORB**), or another kind of feature, and then match them between the images in  the panorama. Note the SIFT and SURF features are protected by patents  and cannot be used for commercial purposes. ORB is a considered a free  alternative, but not as robust.
 
@@ -70,7 +1049,7 @@ The following image shows extracted features and their matching:
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/1e56a991-ecca-4474-8d6a-713ef5fa96bf.png)
 
-# Affine constraint
+## Affine constraint
 
 For a robust and meaningful pairwise matching, we often apply a geometric constraint. One such constraint can be an **affine transform**, a transform that allows only for scale, rotation, and translation. In  2D, an affine transform can be modeled in a 2 x 3 matrix:
 
@@ -78,7 +1057,7 @@ For a robust and meaningful pairwise matching, we often apply a geometric constr
 
 To impose the constraint, we look for an affine transform $\hat{M}$ minimizes the distance (error) between matching points from the left $X_i^L$ and right $X_i^R$ images.
 
-# Random sample consensus (RANSAC)
+## Random sample consensus (RANSAC)
 
 In the preceding image, we illustrate the fact that not all points  conform to the affine constraint, and most of the matched pairs are  discarded as incorrect. Therefore, in most cases we employ a  voting-based estimation method, such as **random sample consensus (RANSAC)**, where a group of points is chosen at random to solve for a hypothesis of *M* directly (via a homogeneous linear system) and then a voting is cast between all points to support or reject this hypothesis.
 
@@ -110,7 +1089,7 @@ The output of the algorithm will provide the transform that has the  highest sup
 
 There are alternatives to RANSAC, such as the **least median squares (LMedS)** algorithm, which is not too different from RANSAC: instead of counting  supporting points, it calculates the median of the square error for each transform hypothesis, and finally return the hypothesis with the least  median square error.
 
-# Homography constraint
+## Homography constraint
 
 While affine transforms are useful for stitching scanned documents (for example, from a flatbed scanner), they cannot be used for stitching photo panoramas.  For stitching photos, we can employ the same process to find a **homography**, a transform between one plane and another, instead of an affine  transform, which has eight degrees of freedom, and is represented in a 3 x 3 matrix as follows:
 
@@ -118,9 +1097,7 @@ While affine transforms are useful for stitching scanned documents (for example,
 
 Once a proper matching has been found, we can find an ordering of the images to sequence them for the panorama, essentially to understand how the images relate to one another. In most cases, in panoramas the  assumption is that the photographer (camera) is standing still and only  rotating on its axis, sweeping from left to right, for example.  Therefore, the goal is to recover the rotation component between the  camera poses. Homographies can be decomposed to recover rotation, if we  regard the input as purely rotational: ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8ff4d431-fad9-4373-8bd1-2f4a3a601d42.png). If we assume the homography was originally composed from the camera intrinsic (calibration), matrix *K,* and a 3 x 3 rotation matrix *R*, we can recover *R* if we know *K*. The intrinsic matrix can be calculated by camera calibration ahead of  time, or can be estimated during the panorama creation process.
 
-
-
-# Bundle Adjustment
+## Bundle Adjustment
 
 When a transformation has been achieved *locally* between all photo *pairs*, we can further optimize our solution in a *global* step. This is called the process of **bundle adjustment**, and is widely constructed as a global optimization of all the  reconstruction parameters (camera or image transforms). Global bundle  adjustment is best performed if all the matched points between images  are put in the same coordinate frame, for example, a 3D space, and there are constraints that span more than two images. For example, if a  feature point appears in more than two images in the panorama, it can be useful for *global* optimization, since it involves registering three or more views. 
 
@@ -130,9 +1107,7 @@ The goal in most bundle adjustment methods is to minimize the **reconstruction e
 
 Where we look for the best camera or image transforms *T*, such that the distance between original point *Xi* and reprojected point *Proj(Tj, Xi)* is minimal. The binary variable *vij* marks whether point *i* can be seen in image *j*, and can contribute to the error. These kinds of optimization problems can be solved with **iterative non-linear least squares** solvers, such as **Levenberg-Marquardt**, since the previous *Proj* function is usually non-linear.
 
-
-
-# Warping images for panorama creation
+## Warping images for panorama creation
 
 Given that we know the homographies between images, we can apply  their inverse to project all the images on the same plane. However, a  direct warping using the homography ends up with a stretched-out look  if, for example, all the images are projected on the plane of the first  image. In the following image, we can see a stitching of 4 images using *concatenated* homography (perspective) warping, meaning all the images are registered to the plane of the first image, which illustrates the ungainly  stretching:
 
@@ -146,7 +1121,7 @@ To wrap the image in cylindrical coordinates, we first apply the  inverse of the
 
 In the cylindrical warping model, the relationship between the images becomes purely translational, and in fact governed by a single  parameter: *θ**.* To stitch the images in the same plane, we simply need to find the *θ*s, just a single degree of freedom, which is simple compared to finding  eight parameters for the homography between every two consecutive  images. One major drawback of the cylindrical method is that we assume  the camera's rotational axis motion is perfectly aligned with its up  axis, as well as static in its place, which is almost never the case  with handheld cameras. Still, cylindrical panoramas produce highly  pleasing results. Another option for warping is **spherical coordinates**, which allow for more options in stitching the images in both *x* and *y* axes.
 
-# Project overview
+## Project overview
 
 This project will include two major parts as follows:
 
@@ -155,9 +1130,7 @@ This project will include two major parts as follows:
 
 The iOS code will mostly be concerned with building the UI,  accessing the camera, and capturing images. Then, we will focus on  getting the images to OpenCV data structures and running the image  stitching functions from the stitch module.
 
-
-
-# Setting up an iOS OpenCV project with CocoaPods 
+## Setting up an iOS OpenCV project with CocoaPods 
 
 To start using OpenCV in iOS, we must import the library compiled for iOS devices. This is easily done with CocoaPods, which is a vast  repository of external packages for iOS and macOS with a convenient  command-line package manager utility called pod.
 
@@ -178,9 +1151,7 @@ end
 
 Essentially, just adding pod 'OpenCV2', '4.0.0' to the target tells CocoaPods to download and unpack the OpenCV framework in our project. Afterwards, we run pod install in the Terminal in the same directory, which will set up our project  and Workspace to include all the Pods (just OpenCV v4 in our case). To  start working on the project, we open the $(PROJECT_NAME).xcworkspace file, rather than the .xcodeproject file as usual with Xcode projects.
 
-
-
-# iOS UI for panorama capture
+## iOS UI for panorama capture
 
 Before we delve into the OpenCV code for turning an image collection  into a panorama, we will first build a UI to support the easy capture of a sequence of overlapping images. First, we must make sure we have  access to the camera as well as saved images. Open the Info.plist file and add the following three rows:
 
@@ -268,7 +1239,7 @@ This will allow us to capture multiple images in succession while  helping the u
 
 Next, we will see how to take the images to an Objective-C++ context, where we can work with the OpenCV C++ API for panorama stitching.
 
-# OpenCV stitching in an Objective-C++ wrapper
+## OpenCV stitching in an Objective-C++ wrapper
 
 For working in iOS, OpenCV provides its usual C++ interface that can  be invoked from Objective-C++. In recent years, however, Apple has  encouraged iOS application developers to use the more versatile Swift  language for building applications and forgo Objective-C. Luckily, a  bridge between Swift and Objective-C (and Objective-C++) can be easily  created, allowing us to invoke Objective-C functions from Swift. Xcode  automates much of the process, and creates the necessary glue code.
 
@@ -352,7 +1323,7 @@ An example of an output panorama created with this code (note the use of cylindr
 
 You may notice some changes in illumination between the four images,  while the edges have been blended. Dealing with varying illumination can be addressed in the OpenCV image stitching API using the cv::detail::ExposureCompensator base API. 
 
-# Summary
+## Summary
 
 In this chapter, we've learned about panorama creation. We've seen  some of the underlying theory and practice in panorama creation,  implemented in OpenCV's stitching module. We then turned our  focus to creating an iOS application that helps a user to capture images for panorama stitching with overlapping views. Lastly, we saw how to  invoke OpenCV code from a Swift application to run the stitching functions on the captures images, resulting in a finished panorama.
 

@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
     std::cout << std::endl;
 
     std::cout << "Keyboard commands (press in the GUI window):" << std::endl;
-    std::cout << "    Esc:  Quit the program." << std::endl;
+    std::cout << "  Esc:  Quit the program." << std::endl;
     std::cout << "    s:    change Sketch / Paint mode." << std::endl;
     std::cout << "    a:    change Alien / Human mode." << std::endl;
     std::cout << "    e:    change Evil / Good character mode." << std::endl;
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
     camera.set(cv::CAP_PROP_FRAME_HEIGHT, desiredCameraHeight);
     
     namedWindow(windowName, cv::WINDOW_NORMAL);
-    cv::setWindowProperty(windowName, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    // cv::setWindowProperty(windowName, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
     
     fps_timer timer;
     
