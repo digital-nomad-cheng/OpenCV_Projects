@@ -30,7 +30,7 @@ Depending on your  camera model, driver, or system, OpenCV might not change the 
 
 You can put this code in the main() function of your main.cpp file:
 
-```
+```c++
 auto cameraNumber = 0; 
 if (argc> 1) 
 cameraNumber = atoi(argv[1]); 
@@ -58,7 +58,7 @@ If you want to display a GUI window on the screen using OpenCV, you call the cv:
 
 Put this main loop in the main.cpp file, as the basis of your real-time camera app:
 
-```
+```c++
 while (true) { 
     // Grab the next camera frame. 
     cv::Mat cameraFrame; 
@@ -97,7 +97,7 @@ There are many different edge detection  filters, such as Sobel, Scharr, and Lap
 
 Nevertheless, we still need to reduce the  noise in the image before we use a Laplacian edge filter. We will use a  median filter because it is good at removing noise while keeping edges  sharp, but is not as slow as a bilateral filter. Since Laplacian filters use grayscale images, we must convert from OpenCV's default BGR format  to grayscale. In your empty cartoon.cpp file, put this code at the top so you can access OpenCV and STD C++ templates without typing cv:: and std:: everywhere:
 
-```
+```c++
 // Include OpenCV's C++ Interface 
  #include <opencv2/opencv.hpp> 
 
@@ -107,7 +107,7 @@ Nevertheless, we still need to reduce the  noise in the image before we use a La
 
 Put this and all remaining code in a cartoonifyImage() function in your cartoon.cpp file:
 
-```
+```c++
 Mat gray; 
  cvtColor(srcColor, gray, CV_BGR2GRAY); 
  const int MEDIAN_BLUR_FILTER_SIZE = 7; 
@@ -119,10 +119,10 @@ Mat gray;
 
 The Laplacian filter produces edges with  varying brightness, so to make the edges look more like a sketch, we  apply a binary threshold to make the edges either white or black:
 
-```
+```c++
 Mat mask; 
- const int EDGES_THRESHOLD = 80; 
- threshold(edges, mask, EDGES_THRESHOLD, 255, THRESH_BINARY_INV);
+const int EDGES_THRESHOLD = 80; 
+threshold(edges, mask, EDGES_THRESHOLD, 255, THRESH_BINARY_INV);
 ```
 
 In the following diagram, you see  the original image (to the left) and the generated edge mask (to the  right), which looks similar to a sketch drawing. After we generate a  color painting (explained later), we also put this edge mask on top to  have black line drawings:
@@ -133,7 +133,7 @@ In the following diagram, you see  the original image (to the left) and the gene
 
 A strong  bilateral filter smooths flat regions while keeping edges sharp, and  therefore is great as an automatic cartoonifier or painting filter,  except that it is extremely slow (that is, measured in seconds or even  minutes, rather than milliseconds!). Therefore, we will use some tricks  to obtain a nice cartoonifier, while still running at an acceptable  speed. The most important trick we can use is that we can perform  bilateral filtering at a lower resolution and it will still have a  similar effect as a full resolution, but run much faster. Let's reduce the total number of pixels by four (for example, half width and half height):
 
-```
+```c++
 Size size = srcColor.size(); 
 Size smallSize; 
 smallSize.width = size.width/2; 
@@ -148,7 +148,7 @@ Rather than applying a large bilateral  filter, we will apply many small bilater
 
 Therefore, we have four parameters that  control the bilateral filter: color strength, positional strength, size, and repetition count. We need a temp Mat since the bilateralFilter() function can't overwrite its input (referred to as **in-place processing**), but we can apply one filter storing a temp Mat and another filter storing back the input:
 
-```
+```c++
 Mat tmp = Mat(smallSize, CV_8UC3); 
 auto repetitions = 7; // Repetitions for strong cartoon effect. 
 for (auto i=0; i<repetitions; i++) { 
@@ -162,11 +162,11 @@ for (auto i=0; i<repetitions; i++) {
 
 Remember that this was applied to the  shrunken image, so we need to expand the image back to the original  size. Then, we can overlay the edge mask that we found earlier. To  overlay the edge mask sketch onto the bilateral  filter painting (left-hand side of the following image), we can start  with a black background and copy the painting pixels that aren't edges  in the sketch mask:
 
-```
+```c++
 Mat bigImg; 
- resize(smallImg, bigImg, size, 0,0, INTER_LINEAR); 
- dst.setTo(0); 
- bigImg.copyTo(dst, mask);
+resize(smallImg, bigImg, size, 0,0, INTER_LINEAR); 
+dst.setTo(0); 
+bigImg.copyTo(dst, mask);
 ```
 
 The result is a cartoon version of the original photo, as shown on the right-hand side of the following image, where the *sketch* mask is overlaid on the painting:
@@ -181,20 +181,20 @@ Cartoons and comics always have both good  and bad characters. With the right co
 
 We will perform this on a grayscale image  with some noise reduction, so the preceding code for converting the  original image to grayscale and applying a 7 x 7 median filter should  still be used (the first image in the following diagram shows the output of the grayscale median blur). Instead of following it with a Laplacian filter and Binary threshold, we can get a scarier look if we apply a 3 x 3 Scharr gradient filter along *x* and *y* (second image in the diagram), then a binary threshold with a very low cutoff (third image in the diagram), and a 3 x 3 median blur, producing the final *evil* mask (fourth image in the diagram):
 
-```
+```c++
 Mat gray;
- cvtColor(srcColor, gray, CV_BGR2GRAY);
- const int MEDIAN_BLUR_FILTER_SIZE = 7;
- medianBlur(gray, gray, MEDIAN_BLUR_FILTER_SIZE);
- Mat edges, edges2;
- Scharr(srcGray, edges, CV_8U, 1, 0);
- Scharr(srcGray, edges2, CV_8U, 1, 0, -1);
- edges += edges2;
- // Combine the x & y edges together.
- const int EVIL_EDGE_THRESHOLD = 12
- threshold(edges, mask, EVIL_EDGE_THRESHOLD, 255,
- THRESH_BINARY_INV);
- medianBlur(mask, mask, 3)
+cvtColor(srcColor, gray, CV_BGR2GRAY);
+const int MEDIAN_BLUR_FILTER_SIZE = 7;
+medianBlur(gray, gray, MEDIAN_BLUR_FILTER_SIZE);
+Mat edges, edges2; 
+Scharr(srcGray, edges, CV_8U, 1, 0);
+Scharr(srcGray, edges2, CV_8U, 1, 0, -1);
+edges += edges2;
+// Combine the x & y edges together.
+const int EVIL_EDGE_THRESHOLD = 12
+threshold(edges, mask, EVIL_EDGE_THRESHOLD, 255,
+THRESH_BINARY_INV);
+medianBlur(mask, mask, 3)
 ```
 
 The following diagram shows the evil effect applied in the fourth image:
@@ -989,17 +989,4094 @@ In the next chapter, we are going to learn how to use **multiple view stereo** (
 
 # Chapter 02 Explore Structure from Motion with the SfM Module
 
+# Explore Structure from Motion with the SfM Module
+
+**Structure from motion** (**SfM**) is the  process of recovering both the positions of cameras looking at a scene,  and the sparse geometry of the scene. The motion between the cameras  imposes geometric constraints that can help us recover the *structure* of objects, hence why the process is called SfM. Since OpenCV v3.0+, a contributed ("contrib") module called sfm was added, which assists in performing end-to-end SfM processing from  multiple images. In this chapter, we will learn how to use the SfM  module to reconstruct a scene to a sparse point cloud, including camera  poses. Later, we will also *densify* the point cloud, adding many more points to it to make it dense by using an open **Multi-View Stereo** (**MVS**) package called OpenMVS. SfM is used for high-quality three-dimensional  scanning, visual odometry for autonomous navigation, aerial photo  mapping, and many more applications, making it one of the most  fundamental pursuits within computer vision. Computer vision engineers  are expected to be familiar with the core concepts of SfM, and the topic is regularly taught in computer vision courses.
+
+The following topics will be covered in this chapter:
+
+- Core concepts of SfM: **Multi-View Geometry** (**MVG**), three-dimensional reconstruction, and **Multi-View Stereo** (**MVS**)
+- Implementing a SfM pipeline using the OpenCV SfM modules
+- Visualizing the reconstruction results
+- Exporting the reconstruction to OpenMVG and densifying the sparse cloud into a full reconstruction
+
+
+
+# Technical requirements
+
+These technologies and installations are required to build and run the code in this chapter:
+
+- OpenCV 4 (compiled with the sfm contrib module)
+- Eigen v3.3+ (required by the sfm module)
+- Ceres solver v2+ (required by the sfm module)
+- CMake 3.12+
+- Boost v1.66+
+- OpenMVS
+- CGAL v4.12+ (required by OpenMVS)
+
+The build instructions for the components listed, as well as  the code to implement the concepts in this chapter, will be provided in  the accompanying code repository. Using OpenMVS is optional, and we may  stop after getting the sparse reconstruction. However, the full MVS  reconstruction is much more impressive and useful; for instance, for 3D  printing replicas.
+
+Any set of photos with sufficient overlap may be sufficient for 3D  reconstruction. For example, we may use a set of photos I took of the  Crazy Horse memorial head in South Dakota that is bundled with this  chapter code. The requirement is that the images should be taken with  sufficient movement between them, but enough to have significant overlap to allow for a strong pair-wise match.
+
+In the following example from the Crazy Horse memorial dataset, we can notice a slight change in view angle between the images, with a  very strong overlap. Notice how we can also see a great variation below  the statue where people are walking about; this will not interfere with  the 3D reconstruction of the stone face:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c139fdc9-f80b-424c-8d10-c0d40c961f01.png)
+
+The code files for this book can be downloaded from https://github.com/PacktPublishing/Mastering-OpenCV-4-Third-Edition.
+
+
+
+# Core concepts of SfM
+
+Before we delve into the implementation of a SfM pipeline, let's  revisit some key concepts that are an essential part of the process. The foremost class of theoretical topics in SfM is **epipolar geometry** (**EG**), the geometry of multiple views or MVG, which builds upon knowledge of **image formation** and **camera calibration**; however, we will only brush over these basic subjects. After we cover a few basics in EG, we will shortly discuss **stereo reconstruction** and look over subjects such as **depth from disparity** and **triangulation**. Other crucial topics in SfM, such as **Robust Feature Matching**, are more mechanical than theoretical, and we will cover them as we  advance in coding the system. We intentionally leave out some very  interesting topics, such as **camera resectioning**, **PnP algorithms**, and **reconstruction factorization**, since these are handled by the underlying sfm module and we need not invoke them, although functions to perform them do exist in OpenCV.
+
+All of these subjects were a source of an incredible amount of  research and literature over the last four decades and serve as topics  for thousands of academic papers, patents, and other publications. Hartley and Zisserman's *Multiple View Geometry* is by far the most prominent resource for SfM and MVG mathematics and algorithms, although an incredible secondary asset is Szeliski's *Computer Vision: Algorithms and Applications*, which explains SfM in great detail, focusing on Richard Szeliski's  seminal contributions to the field. For a tertiary source of  explanation, I recommend grabbing a copy of Prince's *Computer Vision: Models, Learning, and Inference*, which features beautiful figures, diagrams, and meticulous mathematical derivation.
+
+
+
+# Calibrated cameras and epipolar geometry
+
+Our images begin with a projection. The 3D world they see through the lens is *flattened* down on the 2D sensor inside the camera, essentially losing all depth  information. How can we then go back from 2D images to 3D structures?  The answer, in many cases with standard intensity cameras, is MVG.  Intuitively, if we can see (in 2D) an object from at least two views, we can estimate its distance from the cameras. We do that constantly as  humans, with our two eyes. Our human depth perception comes from  multiple (two) views, but not just that. In fact, human visual  perception, as it pertains to sensing depth and 3D structure, is very  complex and has to do with the muscles and sensors of the eyes, not just the *images* on our retinas and their processing in the brain.  The human visual sense and its magical traits are well beyond the scope  of this chapter; however, in more than one way, SfM (and all of computer vision!) is inspired by the human sense of vision.
+
+
+
+Back to our cameras. In standard SfM, we utilize the **pinhole camera model**, which is a simplification of the entire optical, mechanical,  electrical, and software process that goes on in real cameras. The  pinhole model describes how real-world objects turn into pixels and  involve some parameters that we call **intrinsic parameters**, since they describe the intrinsic features of the camera:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/52ec2c88-6b71-4753-ae9b-2b3136cdbe8c.png)
+
+Using the pinhole model, we find the 2D positions of a 3D point on  the image plane by applying a projection. Note how the 3D point ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/082e8d12-45cc-41f0-862d-8ad5be6e6953.png) and the camera origin form a right-angled triangle, where the adjacent side equals ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/43ec9772-0482-4b94-aff2-08dab43b5683.png). The image point ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/b2e69584-aab5-477d-bf92-139e35323646.png) shares the same angle with adjacent ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/2ffb9e3d-59b0-49c3-9cb6-643228ba82a0.png), which is the distance from the origin to the image plane. This distance is called the **focal length**, but that name can be deceiving since the image plane is not actually  the focal plane; we converge the two for simplicity. The elementary  geometry of overlapping right-angled triangles will tell us that ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8b4e3dc4-6e90-4ade-85b6-52e84654106d.png); however, since we deal with images, we must account for the **Principle Point** ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ff8f9036-4db7-43d5-8ded-0fccc303f068.png) and arrive at ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a2aad01e-927b-41c0-9afd-85a9c232f798.png). If we do the same for the ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/584e7bef-49f2-438f-a54b-48bbd2a0bef0.png) axis, this follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8424361a-b565-4e63-8882-bd905032bc8c.png)
+
+
+
+The 3 x 3 matrix is called the **intrinsic parameters matrix**, usually denoted as ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/bf9e32f7-a735-42ef-89cd-647b132747d7.png); however, a number of things seem off about this equation and require explanation. First, we're missing the division by ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/d88615aa-5e37-475f-8768-1030ef7ad753.png), where did it go? Second, what is that mysterious ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cd8c4f12-d18a-48af-978c-e0e495f94295.png) that came about on the LHS of the equation? The answer is **homogeneous coordinates**, meaning we add a ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/fd248af8-1544-491a-a3e6-28652bded085.png) at the end of the vector. This useful notation allows us to linearize  these operations and perform the division later. At the end of the  matrix multiplication step, which we might do for thousands of points at once, we divide the result by the last entry in the vector, which  happens to be exactly the ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8c5ae583-4928-4bb3-8641-1e5da87beb43.png) we're looking for. As for ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/351d1b6d-e72b-4622-94bc-a2c061560b0c.png), this is an unknown arbitrary scale factor we must keep in mind, which  comes from a perspective in our projection. Imagine we had a toy car  very close to the camera, and next to it a real-sized car 10 meters away from the camera; in the image, they would appear to be the same size.  In other words, we could move the 3D point ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ecbbb43e-058f-4368-b325-7ed8c5346431.png) anywhere along the ray going out from the camera and still get the same ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/30dc9a4a-3505-40dd-a165-cffa278deef4.png) coordinate in the image. That is the curse of perspective projection: we lose the depth information, which we mentioned at the beginning of this chapter.
+
+One more thing we must consider is the pose of our camera in the world. Not all cameras are placed at the origin point ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c253290e-f317-4bb2-a1fe-27405c57e23d.png), especially if we have a system with many cameras. We conveniently place one camera at the origin, but the rest will have a rotation and  translation (rigid transform) component with respect to themselves. We,  therefore, add another matrix to the projection equation:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e99c169d-3e69-46cc-bfdc-a84710751e94.png)
+
+The new 3 x 4 matrix is usually called the **extrinsic parameters matrix** and carries 3 x 3 rotation and 3 x 1 translation components. Notice we  use the same homogeneous coordinates trick to help incorporate the  translation into the calculation by adding 1 at the end of ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/35f52b5f-6c1c-4b79-b83a-f64ee62ddd87.png). We will often see this entire equation written as ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/918fc607-619f-40e1-90f6-1dc0fc1582ee.png) in the literature:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/afe58284-fec8-4063-aabc-71572fe54fda.png)
+
+Consider two cameras looking at the same object point. As we just discussed, we can slide the *real* location of the 3D point along the axis from the camera and still  observe the same 2D point, thus losing the depth information. Intuitively, two viewing angles should be enough to find the real 3D positions, as the rays from both viewpoints converge at it. Indeed, as we slide the point on the ray, in the other camera looking from a  different angle, this position changes. In fact, any point in camera **L** (left) will correspond to a *line* in camera **R** (right), called the **epipolar lin****e** (sometimes known as **epiline**), which lies on the **epipolar plane** constructed by the two cameras' optical centers and the 3D point**.** This can be used as a geometric constraint between the two views that can help us find a relationship.
+
+We already know that between the two cameras, there's a rigid transform ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/3ff31428-eb8f-45a7-bbf5-38ccd92ea390.png). If we want to represent ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5312e19e-06df-4f3c-b1b3-72ffe4e65c09.png), a point in camera **R**, in the coordinate frame of camera **L**, we can write ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cc9eb501-2ea2-4842-bc94-7c5477de0058.png). If we take the cross product ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/26995c6a-eddd-4284-96d7-d222615cc2ee.png), we will receive a vector *perpendicular* to the epipolar plane. Therefore, it follows that ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/bbd3ca9a-dfa7-46e3-a967-79b5d2753137.png) since ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/75eade90-fb39-4de5-be81-0ded595a51ca.png) lies *on* the epipolar plane and a dot product would yield 0. We take the skew symmetric form for the cross product and we can write ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e6320176-2437-4779-8671-f46a5e6ec93f.png), then combine this into a single matrix ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/16963532-29d9-466f-8077-1422b284a220.png). We call ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ad071b66-5e31-468c-81d4-443fa5c384ff.png) the **essential matrix**. The essential matrix gives us an **epipolar constraint** over all pairs of points between camera L and camera R that converge at a real 3D point. If a pair of points (from **L** and **R**) fails to satisfy this constraint, it is most likely not a valid  pairing. We can also estimate the essential matrix using a number of  point pairings since they simply construct a homogeneous system of  linear equations. The solution can be easily obtained with an eigenvalue or **singular value decomposition** (**SVD**).
+
+So far in our geometry, we assumed our cameras were normalized, essentially meaning ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/057df30a-2adb-4241-a508-04c2810869d0.png), the identity matrix. However, in real-life images with particular pixel sizes and focal lengths, we must account for the real intrinsic. To  that end, we can apply the inverse of ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/02a5df9f-168f-4a98-a54d-90cd88860c01.png) on both sides: ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/90d42ab3-e88a-4147-ac0f-1d0cd9ae68fd.png). This new matrix we end up with is called the **fundamental matrix**, which can be estimated right from enough pairings of pixel coordinate points. We can then get the essential matrix if we know ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a6723340-58d8-4592-a904-9585d45aea2b.png); however, the fundamental matrix may serve as a good epipolar constraint all on its own.
+
+# Stereo reconstruction and SfM
+
+In SfM, we would like to recover both the poses of cameras and the  position of 3D feature points. We have just seen how simple 2D pair  matches of points can help us estimate the essential matrix and thus  encode the rigid geometric relationship between views: ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/75c4f385-bab6-40dc-9b16-ab06455c632f.png). The essential matrix can be decomposed into ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/26889f93-4c33-48e1-ad7a-f4408f100a4e.png) and ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cfd1670b-72f5-4779-976b-17caf7bf742a.png) by way of SVD, and having found ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/26889f93-4c33-48e1-ad7a-f4408f100a4e.png) and ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cfd1670b-72f5-4779-976b-17caf7bf742a.png), we proceed with finding the 3D points and fulfilling the SfM task for the two images.
+
+
+
+We have seen the geometric relationship between two 2D views and the  3D world; however, we are yet to see how to recover 3D shape from the 2D views. One insight we had is that given two views of the same point, we can cross the two rays from the optic center of the cameras and the 2D  points on the image plane, and they will converge on the 3D point. This  is the basic idea of **triangulation.** One simple way to go about solving for the 3D point is to write the projection equation and equate, since the 3D point (![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c5b56533-84a5-44dc-b990-740775917b51.png)) is common, ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/3bb1a446-1755-4ede-990c-dec12df51f4a.png), where the ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8c58c4cc-20a8-4253-81f8-b96a45c9380a.png) matrices are the ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/298b5bd5-200a-4697-b8fd-c3aa63e7df2e.png) projection matrices. The equations can be worked into a homogeneous system of  linear equations and can be solved, for example, by SVD. This is known  as the **direct linear method** for triangulation; however, it is severely sub-optimal since it makes no direct minimization of a  meaningful error functor. Several other methods have been suggested,  including looking at the closest point between the rays, which generally do not directly intersect, known as the **mid-point method**. 
+
+After getting a baseline 3D reconstruction from two views, we can  proceed with adding more views. This is usually done in a different  method, employing a match between existing 3D and incoming 2D points.  The class of algorithms is called **Point-n-Perspective** (**PnP**), which we will not discuss here. Another method is to perform pairwise  stereo reconstruction, as we've seen already, and calculate the scaling  factor, since each image pair reconstructed may result in a different  scale, as discussed earlier.
+
+Another interesting method for recovering depth information is to further utilize the epipolar lines. We know that a point in image **L** will lie on a line in image **R**, and we can also calculate the line precisely using ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c70582bb-c029-4a6a-8d64-8361277cc955.png). The task is, therefore, to find the right point on the epipolar line in image **R** that best matches the point in image L. This line matching method may be called **stereo depth reconstruction**, and since we can recover the depth information for almost every pixel in the image, it is most times a **dense** reconstruction. In practice, the epipolar lines are first **rectified** to be completely horizontal, mimicking a **pure horizontal translation** between the images. This reduces the problem of matching only on the *x* axis:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5551875c-2e5b-4ea2-b14d-2a3505563d3c.png)
+
+The major appeal of horizontal translation is **disparity**, which describes the distance an interest point travels horizontally between  the two images. In the preceding diagram, we can notice that due to  right overlapping triangles: ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8657f613-633b-4c47-bc83-ad75476cdd43.png), which leads to ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/03c2b817-7a54-4a17-92f7-9f1e116c8a87.png). The baseline ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ee5c8ed6-c67f-4c0c-b3f9-2384a3dec98c.png) (horizontal motion), and the focal length ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/25b33100-a839-44d7-ac00-96740e4a080c.png) are constant with respect to the particular 3D point and its distance from the camera. Therefore, the insight is that the **disparity is inversely proportional to depth**. The smaller the disparity, the farther the point is from the camera.  When we look at the horizon from a moving train's window, the faraway  mountains move very slowly, while the close by trees move very fast.  This effect is also known as **parallax**. Using disparity for 3D reconstruction is at the base of all stereo algorithms.
+
+Another topic of wide research is MVS, which utilizes the epipolar  constraint to find matching points from multiple views at once. Scanning the epilines in multiple images all at once can impose further  constraints on the matching features. Only when a match that satisfies  all the constraints is found is it considered. When we recover multiple camera positions, we could employ MVS to get a dense reconstruction, which is what we will do later in this chapter.
+
+# Implementing SfM in OpenCV
+
+OpenCV has an abundance of tools to implement a full-fledged SfM  pipeline from first principles. However, such a task is very demanding  and beyond the scope of this chapter. The former edition of this book  presented just a small taste of what building such a system will entail, but luckily now we have at our disposal a tried and tested technique  integrated right into OpenCV's API. Although the sfm module  allows us to get away with simply providing a non-parametric function  with a list of images to crunch and receive a fully reconstructed scene  with a sparse point cloud and camera poses, we will not take that route. Instead, we will see in this section some useful methods that will  allow us to have much more control over the reconstruction and exemplify some of the topics we discussed in the last section, as well as be more robust to noise.
+
+This section will begin with the very basics of SfM: **matching images** using key points and feature descriptors. We will then advance to finding **tracks**, and multiple views of similar features through the image set, using a match graph. We proceed with **3D reconstruction**, **3D visualization**, and finally MVS with OpenMVS.
+
+
+
+# mage feature matching
+
+SfM, as presented in the last section, relies on the understanding of the geometric relationship between images as it pertains to the visible objects in them. We saw that we can calculate the exact motion between  two images with sufficient information on how the objects in the images  move. The essential or fundamental matrices, which can be estimated  linearly from image features, can be decomposed to the rotation and  translation elements that define a **3D rigid transform**.  Thereafter, this transform can help us triangulate the 3D position of  the objects, from the 3D-2D projection equations or from a dense stereo  matching over the rectified epilines. It all begins with image feature  matching, so we will see how to obtain robust and noise-free matching.
+
+OpenCV has an extensive offering of 2D feature **detectors** (also called **extractors**) and **descriptors**. Features are designed to be invariant to image deformations so they can be matched through translation, rotation, scaling, and other more  complicated transformations (affine, projective) of the objects in the  scene. One of the latest additions to OpenCV's APIs is the AKAZE feature extractor and detector, which presents a very good compromise  between speed of calculation and robustness to transformation. AKAZE was shown to outperform other prominent features, such as **ORB** (short for **Oriented BRIEF**) and **SURF** (short for **Speeded Up Robust Features**).
+
+The following snippet will extract an AKAZE key point, calculate AKAZE features for each of the images we collect in imagesFilenames, and save them in the keypoints and descriptors arrays respectively:
+
+```
+auto detector = AKAZE::create();
+auto extractor = AKAZE::create();
+
+for (const auto& i : imagesFilenames) {
+    Mat grayscale;
+    cvtColor(images[i], grayscale, COLOR_BGR2GRAY);
+    detector->detect(grayscale, keypoints[i]);
+    extractor->compute(grayscale, keypoints[i], descriptors[i]);
+
+    CV_LOG_INFO(TAG, "Found " + to_string(keypoints[i].size()) + " 
+    keypoints in " + i);
+}
+```
+
+Note we also convert the images to grayscale; however, this step may be omitted and the results will not suffer.
+
+Here's a visualization of the detected features in two adjacent  images. Notice how many of them repeat; this is known as feature **repeatability**, which is one of the most desired functions in a good feature extractor:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/517732d3-574f-4fc1-87e6-49465faa56e0.png)
+
+Next up is matching the features between every pair of images. OpenCV provides an excellent feature matching suite. AKAZE feature descriptors are *binary*, meaning they cannot be regarded as binary-encoded numbers when matched; they must be compared on the bit level with bit-wise operators. OpenCV  offers a **Hamming distance** metric for binary feature matchers, which essentially count the number of incorrect matches between the two-bit sequences:
+
+```
+vector<DMatch> matchWithRatioTest(const DescriptorMatcher& matcher, 
+                                  const Mat& desc1, 
+                                  const Mat& desc2) 
+{
+    // Raw match
+    vector< vector<DMatch> > nnMatch;
+    matcher.knnMatch(desc1, desc2, nnMatch, 2);
+
+    // Ratio test filter
+    vector<DMatch> ratioMatched;
+    for (size_t i = 0; i < nnMatch.size(); i++) {
+        const DMatch first = nnMatch[i][0];
+        const float dist1 = nnMatch[i][0].distance;
+        const float dist2 = nnMatch[i][1].distance;
+
+        if (dist1 < MATCH_RATIO_THRESHOLD * dist2) {
+            ratioMatched.push_back(first);
+        }
+    }
+
+    return ratioMatched;
+}
+```
+
+The preceding function not only invokes our matcher (for example, a BFMatcher(NORM_HAMMING)) regularly, it also performs the **ratio test**. This simple test is a very fundamental concept in many computer vision algorithms  that rely on feature matching (such as SfM, panorama stitching, sparse  tracking, and more). Instead of looking for a single match for a feature from image *A* in image *B*, we look for two matches in image *B* and make sure there is *no confusion*. Confusion in matching may arise if two potential matching-feature  descriptors are too similar (in terms of their distance metric) and we  cannot tell which of them is the correct match for the query, so we  discard them both to prevent confusion.
+
+Next, we implement a **reciprocity filter**. This filter only allows feature matches that match (with a ratio test) in *A* to *B,* as well as *B* to *A*. Essentially, this is making sure there's a one-to-one match between features in image *A* and those in image *B:* a symmetric match. The reciprocity filter removes even more ambiguity and contributes to a cleaner, more robust match:
+
+```
+// Match with ratio test filter
+vector<DMatch> match = matchWithRatioTest(matcher, descriptors[imgi], descriptors[imgj]);
+
+// Reciprocity test filter
+vector<DMatch> matchRcp = matchWithRatioTest(matcher, descriptors[imgj], descriptors[imgi]);
+vector<DMatch> merged;
+for (const DMatch& dmrecip : matchRcp) {
+    bool found = false;
+    for (const DMatch& dm : match) {
+        // Only accept match if 1 matches 2 AND 2 matches 1.
+        if (dmrecip.queryIdx == dm.trainIdx and dmrecip.trainIdx == 
+        dm.queryIdx) {
+            merged.push_back(dm);
+            found = true;
+            break;
+        }
+    }
+    if (found) {
+        continue;
+    }
+}
+```
+
+Lastly, we apply the **epipolar constraint**. Every two  images that have a valid rigid transformation between them would comply  with the epipolar constraint over their feature points, ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/2bcab493-8875-45e6-9b1d-e1b84ad27c6e.png), and those who don't pass this test (with sufficient success) are likely not a good match and may contribute to noise. We achieve this by  calculating the fundamental matrix with a voting algorithm (RANSAC) and  checking for the ratio of inliers to outliers. We apply a threshold to  discard matches with a low survival rate with respect to the original  match:
+
+```
+// Fundamental matrix filter
+vector<uint8_t> inliersMask(merged.size());
+vector<Point2f> imgiPoints, imgjPoints;
+for (const DMatch& m : merged) {
+    imgiPoints.push_back(keypoints[imgi][m.queryIdx].pt);
+    imgjPoints.push_back(keypoints[imgj][m.trainIdx].pt);
+}
+findFundamentalMat(imgiPoints, imgjPoints, inliersMask);
+
+vector<DMatch> final;
+for (size_t m = 0; m < merged.size(); m++) {
+    if (inliersMask[m]) {
+        final.push_back(merged[m]);
+    }
+}
+
+if ((float)final.size() / (float)match.size() < PAIR_MATCH_SURVIVAL_RATE) {
+    CV_LOG_INFO(TAG, "Final match '" + imgi + "'->'" + imgj + "' has less than "+to_string(PAIR_MATCH_SURVIVAL_RATE)+" inliers from orignal. Skip");
+    continue;
+}
+```
+
+We can see the effect of each of the filtering steps, raw match, ratio, reciprocity, and epipolar, in the following figure:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a2df9b8c-5b4e-44fd-a12e-2c7e6da2cefc.png)
+
+
+
+# Finding feature tracks
+
+The concept of **feature tracks** was introduced in SfM literature as early as 1992 in Tomasi and Kanade's work (*Shape and Motion from Image Streams*, 1992) and made famous in Snavely and Szeliski's seminal photo tourism  work from 2007 for large-scale unconstrained reconstructions. Tracks are simply the 2D positions of a single scene feature, an interesting  point, over a number of views. Tracks are important since they maintain  consistency across frames than can be composed into a global  optimization problem, as Snavely suggested. Tracks are specifically  important to us since OpenCV's sfm module allows to reconstruct a scene by providing just the 2D tracks across all the views:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8d584827-0e68-477d-9b7d-2111bff3e1c5.png)
+
+Having already found a pair-wise match between all views, we have the required information to find tracks within those matched features. If  we follow feature *i* in the first image to the second image  through the match, then from the second image to the third image  through their own match, and so on, we would end up with its track. This sort of bookkeeping can easily become too hard to implement in a  straightforward fashion with standard data structures. However, it can  be simply done if we represent all the matches in a **match graph**. Each node in the graph would be a feature detected in a single image,  and edges would be the matches we recovered. From the feature nodes of  the first image, we would have many edges to the feature nodes of the  second image, third image, fourth image, and so on (for matches not  discarded by our filters). Since our matches are reciprocal (symmetric), the graph can be undirected. Moreover, the reciprocity test ensures  that for feature *i* in the first image, there is **only one** matching feature *j* in the second image*,* and vice versa: feature *j* will only match back to feature *i*.
+
+The following is a visual example of such a match graph. The node  colors represent the image from which the feature point (node) has  originated. Edges represent a match between image features. We can  notice the very strong pattern of a feature matching chain from the  first image to the last:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/9f17f656-cf15-4758-a90a-3cdceea56a72.png)
+
+To code the match graph, we can use the **Boost Graph Library** (**BGL**), which has an extensive API for graph processing and algorithms.  Constructing the graph is straightforward; we simply augment the nodes  with the image ID and feature ID, so later we can trace back the origin:
+
+```
+using namespace boost;
+
+struct ImageFeature {
+    string image;
+    size_t featureID;
+};
+typedef adjacency_list < listS, vecS, undirectedS, ImageFeature > Graph;
+typedef graph_traits < Graph >::vertex_descriptor Vertex;
+map<pair<string, int>, Vertex> vertexByImageFeature;
+
+Graph g;
+
+// Add vertices - image features
+for (const auto& imgi : keypoints) {
+    for (size_t i = 0; i < imgi.second.size(); i++) {
+        Vertex v = add_vertex(g);
+        g[v].image = imgi.first;
+        g[v].featureID = i;
+        vertexByImageFeature[make_pair(imgi.first, i)] = v;
+    }
+}
+
+// Add edges - feature matches
+for (const auto& match : matches) {
+    for (const DMatch& dm : match.second) {
+        Vertex& vI = vertexByImageFeature[make_pair(match.first.first, dm.queryIdx)];
+        Vertex& vJ = vertexByImageFeature[make_pair(match.first.second, dm.trainIdx)];
+        add_edge(vI, vJ, g);
+    }
+}
+```
+
+Looking at a visualization of the resulting graph (using boost::write_graphviz()), we can see many cases where our matching is erroneous. A bad match  chain will involve more than one feature from the same image in the  chain. We marked a few such instances in the following figure; notice  some chains have two or more nodes with the same color:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/0e6d5773-712e-45e1-8826-559815d205d1.png)
+
+We can notice the chains are essentially connected components in the graph. Extracting the components is simple using boost::connected_components():
+
+```
+// Get connected components
+std::vector<int> component(num_vertices(gFiltered), -1);
+int num = connected_components(gFiltered, &component[0]);
+map<int, vector<Vertex> > components;
+for (size_t i = 0; i != component.size(); ++i) {
+    if (component[i] >= 0) {
+        components[component[i]].push_back(i);
+    }
+}
+```
+
+We can filter out the bad components (with more than one feature from any one image) to get a clean match graph.
+
+# 3D reconstruction and visualization
+
+Having obtained the tracks in principle, we need to align them in a  data structure that OpenCV's SfM module expects. Unfortunately, the sfm module is not very well documented, so this part we have to figure out  on our own from the source code. We will be invoking the following  function under the cv::sfm:: namespace, which can be found in opencv_contrib/modules/sfm/include/opencv2/sfm/reconstruct.hpp:
+
+```
+void reconstruct(InputArrayOfArrays points2d, OutputArray Ps, OutputArray points3d, InputOutputArray K, bool is_projective = false);
+```
+
+
+
+The opencv_contrib/modules/sfm/src/simple_pipeline.cpp file has a major hint as to what that function expects as input:
+
+```
+static void
+parser_2D_tracks( const std::vector<Mat> &points2d, libmv::Tracks &tracks )
+{
+  const int nframes = static_cast<int>(points2d.size());
+  for (int frame = 0; frame < nframes; ++frame) {
+    const int ntracks = points2d[frame].cols;
+    for (int track = 0; track < ntracks; ++track) {
+      const Vec2d track_pt = points2d[frame].col(track);
+      if ( track_pt[0] > 0 && track_pt[1] > 0 )
+        tracks.Insert(frame, track, track_pt[0], track_pt[1]);
+    }
+  }
+} 
+```
+
+In general, the sfm module uses a reduced version of libmv (https://developer.blender.org/tag/libmv/), which is a well-established SfM package used for 3D reconstruction for cinema production with the Blender 3D (https://www.blender.org/) graphics software.
+
+We can tell the tracks need to be placed in a vector of multiple individual cv::Mat, where each contains an aligned list of cv::Vec2d as columns, meaning it has two rows of double. We can also deduce that missing (unmatched) feature points in a track  will have a negative coordinate. The following snippet will extract  tracks in the desired data structure from the match graph:
+
+```
+vector<Mat> tracks(nViews); // Initialize to number of views
+
+// Each component is a track
+const size_t nViews = imagesFilenames.size();
+tracks.resize(nViews);
+for (int i = 0; i < nViews; i++) {
+    tracks[i].create(2, components.size(), CV_64FC1);
+    tracks[i].setTo(-1.0); // default is (-1, -1) - no match
+}
+int i = 0;
+for (auto c = components.begin(); c != components.end(); ++c, ++i) {
+    for (const int v : c->second) {
+        const int imageID = imageIDs[g[v].image];
+        const size_t featureID = g[v].featureID;
+        const Point2f p = keypoints[g[v].image][featureID].pt;
+        tracks[imageID].at<double>(0, i) = p.x;
+        tracks[imageID].at<double>(1, i) = p.y;
+    }
+}
+```
+
+
+
+We follow up with running the reconstruction function, collecting the sparse 3D point cloud and the color for each 3D point, and afterward,  visualize the results (using functions from cv::viz::):
+
+```
+cv::sfm::reconstruct(tracks, Rs, Ts, K, points3d, true);
+```
+
+This will produce a sparse reconstruction with a point cloud and camera positions, visualized in the following image:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/26e82dc2-ee2e-4cfa-8685-03b292d0352b.png)
+
+Re-projecting the 3D points back on the 2D images we can validate a correct reconstruction:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5ac047aa-8b5b-48ed-b09e-236fd11e810b.png)
+
+See the entire code for reconstruction and visualization in the accompanying source repository.
+
+Notice the reconstruction is very sparse; we only see 3D points where features have matched. This doesn't make for a very appealing effect  when getting the geometry of objects in the scene. In many cases, SfM  pipelines do not conclude with a sparse reconstruction, which is not  useful for many applications, such as 3D scanning. Next, we will see how to get a **dense** reconstruction.
+
+# MVS for dense reconstruction
+
+With the sparse 3D point cloud and the positions of the cameras, we  can proceed with dense reconstruction using MVS. We already learned the  basic concept of MVS in the first section; however, we do not need to  implement this from scratch, but rather we can use the **OpenMVS** project. To use OpenMVS for cloud densifying, we must save our project  in a specialized format. OpenMVS provides a class for saving and loading .mvs projects, the MVS::Interface class, defined in MVS/Interface.h.
+
+Let's start with the camera:
+
+```
+MVS::Interface interface;
+MVS::Interface::Platform p;
+
+// Add camera
+MVS::Interface::Platform::Camera c;
+c.K = Matx33d(K_); // The intrinsic matrix as refined by the bundle adjustment
+c.R = Matx33d::eye(); // Camera doesn't have any inherent rotation
+c.C = Point3d(0,0,0); // or translation
+c.name = "Camera1";
+const Size imgS = images[imagesFilenames[0]].size();
+c.width = imgS.width; // Size of the image, to normalize the intrinsics
+c.height = imgS.height;
+p.cameras.push_back(c);
+```
+
+When adding the camera poses (views), we must take care. OpenMVS expects to get the rotation and **center** of the camera, and not the camera pose matrix for point projection ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/16185ca2-8aee-4e2f-ab7b-5cb67cd882f4.png). We therefore must translate the translation vector to represent the center of the camera by applying the inverse rotation ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/06af28d6-a271-4d9a-9ed7-0024d32357e6.png):
+
+```
+// Add views
+p.poses.resize(Rs.size());
+for (size_t i = 0; i < Rs.size(); ++i) {
+    Mat t = -Rs[i].t() * Ts[i]; // Camera *center*
+    p.poses[i].C.x = t.at<double>(0);
+    p.poses[i].C.y = t.at<double>(1);
+    p.poses[i].C.z = t.at<double>(2);
+    Rs[i].convertTo(p.poses[i].R, CV_64FC1);
+
+    // Add corresponding image (make sure index aligns)
+    MVS::Interface::Image image;
+    image.cameraID = 0;
+    image.poseID = i;
+    image.name = imagesFilenames[i];
+    image.platformID = 0;
+    interface.images.push_back(image);
+}
+p.name = "Platform1";
+interface.platforms.push_back(p);
+```
+
+After adding the point cloud to the Interface as well, we can proceed with the cloud densifying in the command line:
+
+```
+$ ${openMVS}/build/bin/DensifyPointCloud -i crazyhorse.mvs
+18:48:32 [App ] Command line: -i crazyhorse.mvs
+18:48:32 [App ] Camera model loaded: platform 0; camera 0; f 0.896x0.896; poses 7
+18:48:32 [App ] Image loaded 0: P1000965.JPG
+18:48:32 [App ] Image loaded 1: P1000966.JPG
+18:48:32 [App ] Image loaded 2: P1000967.JPG
+18:48:32 [App ] Image loaded 3: P1000968.JPG
+18:48:32 [App ] Image loaded 4: P1000969.JPG
+18:48:32 [App ] Image loaded 5: P1000970.JPG
+18:48:32 [App ] Image loaded 6: P1000971.JPG
+18:48:32 [App ] Scene loaded from interface format (11ms):
+7 images (7 calibrated) with a total of 5.25 MPixels (0.75 MPixels/image)
+1557 points, 0 vertices, 0 faces
+18:48:32 [App ] Preparing images for dense reconstruction completed: 7 images (125ms)
+18:48:32 [App ] Selecting images for dense reconstruction completed: 7 images (5ms)
+Estimated depth-maps 7 (100%, 1m44s705ms)
+Filtered depth-maps 7 (100%, 1s671ms)
+Fused depth-maps 7 (100%, 421ms)
+18:50:20 [App ] Depth-maps fused and filtered: 7 depth-maps, 1653963 depths, 263027 points (16%%) (1s684ms)
+18:50:20 [App ] Densifying point-cloud completed: 263027 points (1m48s263ms)
+18:50:21 [App ] Scene saved (489ms):
+7 images (7 calibrated)
+263027 points, 0 vertices, 0 faces
+18:50:21 [App ] Point-cloud saved: 263027 points (46ms)
+```
+
+This process might take a few minutes to complete. However, once it's done, the results are very impressive. The dense point cloud has a  whopping **263,027 3D points**, compared to just 1,557 in the sparse cloud. We can visualize the dense OpenMVS project using the Viewer app bundled in OpenMVS:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/d515b586-d8a4-4c70-abd3-7f8760f6bf85.png)
+
+OpenMVS has several more functions to complete the reconstruction,  such as extracting a triangular mesh from the dense point cloud.
+
+# Summary
+
+This chapter focused on SfM and its implementation with OpenCV's sfm contributed module and OpenMVS. We explored some theoretical concepts in multiple  view geometry, and several practical matters: extracting key feature  points, matching them, creating and analyzing the match graph, running  the reconstruction, and finally performing MVS to densify the sparse 3D  point cloud. 
+
+In the next chapter, we will see how to use OpenCV's face contrib module to detect facial landmarks in photos, as well as detecting the direction a face is pointing with the solvePnP function.
+
 # Chapter 03 Face Landmark and Pose with the Face Module
+
+# Face Landmark and Pose with the Face Module
+
+Face landmark detection is the process of finding points of interest  in an image of a human face. It recently saw a spur of interest in the  computer vision community, as it has many compelling applications; for  example, detecting emotion through facial gestures, estimating gaze  direction, changing facial appearance (**face swap**),  augmenting faces with graphics, and puppeteering of virtual characters.  We can see many of these applications in today's smartphones and PC  web-camera programs. To achieve these applications, the landmark  detector must find dozens of points on the face, such as corners of the  mouth, corners of eyes, the silhouette of the jaws, and many more. To  that end, many algorithms were developed, and a few were implemented in  OpenCV. In this chapter, we will discuss the process of face landmark  (also known as **facemark**) detection using the cv::face module, which provides an API for inference, as well as training of a  facemark detector. We will see how to apply the facemark detector to  locating the direction of the face in 3D.
+
+The following topics will be covered in this chapter:
+
+- Introducing face landmark detection history and theory, and an explanation of the algorithms implemented in OpenCV
+- Utilizing OpenCV's face module for face landmark detection
+- Estimating the approximate direction of the face by leveraging 2D–3D information
+
+
+
+# Technical requirements
+
+The following technologies and installations are required to build the code in this chapter:
+
+- OpenCV v4 (compiled with the face contrib module)
+- Boost v1.66+
+
+Build instructions for the preceding components listed, as well as  the code to implement the concepts presented in this chapter, will be  provided in the accompanying code repository.
+
+To run the facemark detector, a pre-trained model is  required. Although training the detector model is certainly possible  with the APIs provided in OpenCV, some pre-trained models are offered  for download. One such model can be obtained from https://raw.githubusercontent.com/kurnianggoro/GSOC2017/master/data/lbfmodel.yaml, supplied by the contributor of the algorithm implementation to OpenCV (during the 2017 **Google Summer of Code** (**GSoC**)).
+
+The facemark detector can work with any image; however, we can use a  prescribed dataset of facial photos and videos that are used to  benchmark facemark algorithms. Such a dataset is **300-VW**, available through **Intelligent Behaviour Understanding Group** (**iBUG**), a computer vision group at Imperial College London: https://ibug.doc.ic.ac.uk/resources/300-VW/. It contains hundreds of videos of facial appearances in media,  carefully annotated with 68 facial landmark points. This dataset can be  used for training the facemark detector, as well as to understand the  performance level of the pre-trained model we use. The following is an  excerpt from one of the 300-VW videos with ground truth annotation:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/96b3f3ca-159c-4825-ae91-15542e1415ca.png)
+
+Image reproduced under Creative Commons license
+
+The code files for this book can be downloaded from https://github.com/PacktPublishing/Mastering-OpenCV-4-Third-Edition. 
+
+
+
+# Theory and context
+
+Facial landmark detection algorithms automatically  find the locations of key landmark points on facial images. Those key  points are usually prominent points locating a facial component, such as eye corner or mouth corner, to achieve a higher-level understanding of  the face shape. To detect a decent range of facial expressions, for  example, points around the jawline, mouth, eyes, and eyebrows are  needed. Finding facial landmarks proves to be a difficult task for a  variety of reasons: great variation between subjects, illumination  conditions, and occlusions. To that end, computer vision researchers  proposed dozens of landmark detection algorithms over the past three  decades.
+
+A recent survey of facial landmark detection (Wu and Ji, 2018)  suggests separating landmark detectors into three groups: holistic  methods, **constrained local model** (**CLM**) methods, and regression methods:
+
+- Wu and Ji pose the **holistic methods** as ones that model the complete appearance of the face's pixel intensities
+- **CLM methods** examine *local* patches around each landmark in combination with a global model
+- **Regression methods** iteratively try to predict landmark locations using a cascade of small updates learned by regressors
+
+# Active appearance models and constrained local models
+
+A canonical example of a holistic method is the **active appearance model** (**AAM**) from the late '90s, usually attributed to the work of T.F. Cootes  (1998). In AAM, the goal is to iteratively match a known face rendering  (from the training data) to the target input image, which upon  convergence gives the shape, and thus, landmarks. The AAM method and its derivatives were extremely popular, and still take up a fair share of  attention. However AAM's successor, CLM methods, have shown far better  performance under illumination changes and occlusions, and rapidly took  the lead. Mostly attributed to the work of Cristinacce and Cootes (2006) and Saragih et al. (2011), CLM methods model the pixel intensity  appearance of each landmark locally (patch), as well as incorporating a  global shape beforehand to cope with occlusions and false local  detections.
+
+CLMs can be generally described as looking to minimize, where *p* is a facial shape *pose* that can be decomposed to its *D* landmark ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5603301a-3941-4f41-9e16-c4b4b7a87e8f.png) points, as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/3ff7cca2-1efd-4445-839d-840760456c3e.png)
+
+Facial poses are primarily obtained by way of **principal component analysis** (**PCA**), and the landmarks are the result of the inverse PCA operation. Using  PCA is useful, since most facial shape poses are strongly correlated,  and the full landmark position space is highly redundant. A distance  function (denoted ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/f3c190a7-6fc3-4923-b5e1-7a7533b95529.png)) is used to determine how close a given landmark model point is to the image observation ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/4583eb8b-49f4-49dd-ba0e-0a85655b0f07.png). In many cases, the distance function is a patch-to-patch similarity  measure (template matching), or usage of edge-based features, such as  the **histogram of gradients** (**HOG**). The term ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/bfe9d149-5b1e-463a-9aba-50cda6203960.png) is used for regularization over improbable or extreme face shape poses.
+
+# Regression methods
+
+In contrast, *regression methods* employ a more simplistic, but powerful approach. These methods use machine learning, by way of regression, an *update step* to an initial positioning of the landmarks and iterate until the positions converge, where ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/f3d96a24-1849-46fc-a3b1-dfe99b3d2862.png) is the shape at time *t*, and ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/588f0d0c-f7f5-4d18-bd0b-c24ab02fd805.png) is the result of running the regressor *r* on the image *I* and the current shape, demonstrated as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/602f1f37-379f-4918-9e59-254e8b61b288.png)
+
+ By cascading these update operations, the final landmark positions are obtained.
+
+This approach allows consuming enormous amounts of training data and  letting go of the handcrafted models for the local similarity and global constraints that are the center of CLM methods. The prevailing  regression method is **gradient boosting trees** (**GBT**), which offer very fast inference, simple implementations, and are parallelizable as a forest.
+
+There are yet newer approaches to facial landmark detection,  utilizing deep learning. These new methods either directly regress the  position of the facial landmarks from the image by employing **convolutional neural networks** (**CNN**), or use a hybrid approach of CNNs with a 3D model and cascaded-regression methods.
+
+OpenCV's face module (first introduced in OpenCV v3.0)  that contains implementations for AAM, Ren et al. (2014) and Kazemi et  al. (2014) regression type methods. In this chapter, we will employ Ren  et al.'s (2014) method, since it presents the best results given the  pre-trained model provided by the contributors. Ren et al.'s method  learns the best **local binary features** (**LBF**), a very short binary code that describes the visual appearance around a point for each landmark, as well as to learn the shape update step by regression.
+
+# Facial landmark detection in OpenCV
+
+Landmark detection starts with **face detection**,  finding faces in the image and their extents (bounding boxes). Facial  detection has long been considered a solved problem, and OpenCV contains one of the first robust face detectors freely available to the public.  In fact, OpenCV, in its early days, was majorly known and used for its  fast face detection feature, implementing the canonical Viola-Jones  boosted cascade classifier algorithm (Viola et al. 2001, 2004), and  providing a pre-trained model. While face detection has grown much since those early days, the fastest and easiest method for detecting faces in OpenCV is still to use the bundled cascade classifiers, by means of the cv::CascadeClassifier class provided in the core module.
+
+We implement a simple helper function to detect faces with the cascade classifier, shown as follows:
+
+```
+void faceDetector(const Mat& image,
+                  std::vector<Rect> &faces,
+                  CascadeClassifier &face_cascade) {
+    Mat gray;
+
+    // The cascade classifier works best on grayscale images
+    if (image.channels() > 1) {
+        cvtColor(image, gray, COLOR_BGR2GRAY);
+    } else {
+        gray = image.clone();
+    }
+
+    // Histogram equalization generally aids in face detection
+    equalizeHist(gray, gray);
+
+    faces.clear();
+
+    // Run the cascade classifier
+    face_cascade.detectMultiScale(
+        gray, 
+        faces, 
+        1.4, // pyramid scale factor
+        3,   // lower thershold for neighbors count
+        // here we hint the classifier to only look for one face
+        CASCADE_SCALE_IMAGE + CASCADE_FIND_BIGGEST_OBJECT);
+}
+```
+
+We may want to tweak the two parameters that govern the face  detection: pyramid scale factor and number of neighbors. The pyramid  scale factor is used to create a pyramid of images within which the  detector will try to find faces. This is how multi-scale detection is  achieved, since the bare detector has a fixed aperture. In each step of  the image pyramid, the image is downscaled by this factor, so a small  factor (closer to 1.0) will result in many images, longer runtime, but  more accurate results. We also have control of the lower threshold for a number of neighbors. This comes into play when the cascade classifier  has multiple positive face classifications in close proximity. Here, we  instruct the overall classification to only return a face bound if it  has at least three neighboring positive face classifications. A lower  number (an integer, close to 1) will return more detections, but will  also introduce false positives.
+
+We must initialize the cascade classifier from the OpenCV-provided  models (XML files of the serialized models are provided in the $OPENCV_ROOT/data/haarcascades directory). We use the standard trained classifier on frontal faces, demonstrated as follows:
+
+```
+const string cascade_name = "$OPENCV_ROOT/data/haarcascades/haarcascade_frontalface_default.xml";
+
+CascadeClassifier face_cascade;
+if (not face_cascade.load(cascade_name)) {
+    cerr << "Cannot load cascade classifier from file: " << cascade_name << endl;
+    return -1;
+}
+
+// ... obtain an image in img
+
+vector<Rect> faces;
+faceDetector(img, faces, face_cascade);
+
+// Check if any faces were detected or not
+if (faces.size() == 0) {
+    cerr << "Cannot detect any faces in the image." << endl;
+    return -1;
+}
+```
+
+A visualization of the results of the face detector is shown in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/da6cd6c6-3be8-4cdd-a7be-232d277b058c.png)
+
+The facemark detector will work around the detected faces, beginning  at the bounding boxes. However, first we must initialize the cv::face::Facemark object, demonstrated as follows:
+
+```
+#include <opencv2/face.hpp>
+
+using namespace cv::face;
+
+// ...
+
+const string facemark_filename = "data/lbfmodel.yaml";
+Ptr<Facemark> facemark = createFacemarkLBF();
+facemark->loadModel(facemark_filename);
+cout << "Loaded facemark LBF model" << endl;
+```
+
+The cv::face::Facemark abstract API is used for all the  landmark detector flavors, and offers base functionality for  implementation for inference and training according to the specific  algorithm. Once loaded, the facemark object can be used with its fit function to find the face shape, shown as follows:
+
+```
+vector<Rect> faces;
+faceDetector(img, faces, face_cascade);
+
+// Check if faces detected or not
+if (faces.size() != 0) {
+    // We assume a single face so we look at the first only
+    cv::rectangle(img, faces[0], Scalar(255, 0, 0), 2);
+
+    vector<vector<Point2f> > shapes;
+
+    if (facemark->fit(img, faces, shapes)) {
+        // Draw the detected landmarks
+        drawFacemarks(img, shapes[0], cv::Scalar(0, 0, 255));
+    }
+} else {
+    cout << "Faces not detected." << endl;
+}
+```
+
+A visualization of the results of the landmark detector (using cv::face::drawFacemarks) is shown in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e054c050-ae89-4c01-abea-9f75b80e0324.png)
+
+# Measuring error
+
+Visually, the results seem very good. However, since we have the  ground truth data, we may elect to analytically compare it to the  detection and get an error estimate. We can use a standard mean  Euclidean distance metric (![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/053ee1bd-3206-4a0b-98ee-338f8952b8ae.png)) to tell how close each predicted landmark is to the ground truth on average:
+
+```
+float MeanEuclideanDistance(const vector<Point2f>& A, const vector<Point2f>& B) {
+    float med = 0.0f;
+    for (int i = 0; i < A.size(); ++i) {
+        med += cv::norm(A[i] - B[i]);
+    }
+    return med / (float)A.size();
+}
+```
+
+A visualization of the results with the prediction (red) and ground truth (green) overlaid, shown in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a0f0e0b8-c2bd-4c16-b630-9ae3798edb55.png)
+
+We can see the average error over all landmarks is roughly only one pixel for these particular video frames.
+
+# Estimating face direction from landmarks
+
+Having obtained the facial landmarks, we can attempt to find the direction of the face. The 2D face landmark points essentially conform to the shape of the head. So, given a 3D  model of a generic human head, we can find approximate corresponding 3D  points for a number of facial landmarks, as shown in the following  photo:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/17c938f6-b7c5-4116-bbe3-69aa6410f16c.png)
+
+# Estimated pose calculation
+
+From these 2D–3D correspondences, we can calculate 3D pose (rotation  and translation) of the head, with respect to the camera, by way of the **Point-n-Perspective** (**PnP**) algorithm. The details of the algorithm and object pose detection are beyond the  scope of this chapter; however, we can quickly rationalize why just a  handful of 2D–3D point correspondences are suffice to achieve this. The  camera that took the preceding picture has a **rigid**  transformation, meaning it has moved a certain distance from the object, as well as rotated somewhat, with respect to it. In very broad terms,  we can then write the relationship between points on the image (near the camera) and the object as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cc171f7a-6863-43f4-a9c0-90355fe2d447.png)
+
+This is an equation where ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c7d1b45b-23f9-4387-b6a1-d1d7f192d1cf.png) are the object's 3D position, and ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/62257b13-28fa-41d9-b9e8-0841d59c42d7.png) are points in the image. This equation also includes a projection, governed by the camera intrinsic parameters (focal length *f* and center point *c*), that transforms the 3D points to 2D image points, up to scale *s*. Say we are given the intrinsic parameters by calibrating the camera, or we  approximate them, we are left to find 12 coefficients for the rotation  and translation. If we had enough 2D and 3D corresponding points, we can write a system of linear equations, where each point can contribute two equations, to solve for all of these coefficients. In fact, it was shown that we  don't need six points, since the rotation has less than nine degrees of  freedom, we can make do with just four points. OpenCV provides an  implementation to find the rotation and translation with its cv::solvePnP functions of the calib3d module.
+
+We line up the 3D and 2D points and employ cv::solvePnP:
+
+```
+vector<Point3f> objectPoints {
+        {8.27412, 1.33849, 10.63490},    //left eye corner
+        {-8.27412, 1.33849, 10.63490},   //right eye corner
+        {0, -4.47894, 17.73010},         //nose tip
+        {-4.61960, -10.14360, 12.27940}, //right mouth corner
+        {4.61960, -10.14360, 12.27940},  //left mouth corner
+};
+vector<int> landmarksIDsFor3DPoints {45, 36, 30, 48, 54}; // 0-index
+
+// ...
+vector<Point2f> points2d;
+for (int pId : landmarksIDsFor3DPoints) {
+    points2d.push_back(shapes[0][pId] / scaleFactor);
+}
+
+solvePnP(objectPoints, points2d, K, Mat(), rvec, tvec, true);
+```
+
+The *K* matrix for the camera intrinsics we estimate from size the preceding image.
+
+
+
+# Projecting the pose on the image
+
+After obtaining the rotation and translation, we project four points  from the object coordinate space to the preceding image: tip of the  nose, *x* axis direction, *y* axis direction, and *z* axis direction, and draw the arrows in the preceding image:
+
+```
+vector<Point3f> objectPointsForReprojection {
+        objectPoints[2],                   // tip of nose
+        objectPoints[2] + Point3f(0,0,15), // nose and Z-axis
+        objectPoints[2] + Point3f(0,15,0), // nose and Y-axis
+        objectPoints[2] + Point3f(15,0,0)  // nose and X-axis
+};
+
+//...
+
+vector<Point2f> projectionOutput(objectPointsForReprojection.size());
+projectPoints(objectPointsForReprojection, rvec, tvec, K, Mat(), projectionOutput);
+arrowedLine(out, projectionOutput[0], projectionOutput[1], Scalar(255,255,0));
+arrowedLine(out, projectionOutput[0], projectionOutput[2], Scalar(0,255,255));
+arrowedLine(out, projectionOutput[0], projectionOutput[3], Scalar(255,0,255));
+```
+
+This results in a visualization of the direction the face is pointing, as shown in the following screenshots:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c66452fc-e374-48e1-9cc8-98300814965a.png)
+
+# Summary
+
+In this chapter, we learned how to use OpenCV's face contrib module and the cv::Facemark API to detect facial landmarks in the image, and then use the landmarks with cv::solvePnP() to find the approximate direction of the face. The APIs are simple and  straightforward, but pack a powerful punch. With knowledge of landmark  detection, many exciting applications can be implemented, such as  augmented reality, face swap, identification, and puppeteering.
 
 # Chapter 04 Number Plate Recognition with Deep Convolutional Networks
 
+# Number Plate Recognition with Deep Convolutional Networks
+
+This chapter introduces us to the steps needed to create an application for **Automatic Number Plate Recognition** (**ANPR**). There are different approaches and techniques based on different  situations; for example, an infrared camera, fixed car position, and  light conditions. We can proceed to construct an ANPR application to  detect automobile license plates in a photograph taken between two and  three meters from a car, in ambiguous light conditions, and with a  non-parallel ground with minor perspective distortions in the  automobile's plate.
+
+The main purpose of this chapter is to  introduce us to image segmentation and feature extraction, pattern  recognition basics, and two important pattern recognition algorithms,  the **Support Vector Machine** (**SVM**) and **deep neural network** (**DNN**), using **convolutional networks**. In this chapter, we will cover the following topics:
+
+- ANPR
+- Plate detection
+- Plate recognition
+
+
+
+# Introduction to ANPR
+
+ANPR, sometimes known by other terms, such as **Automatic License Plate Recognition** (**ALPR**), **Automatic Vehicle Identification** (**AVI**), or **car plate recognition** (**CPR**), is a surveillance method that uses **optical character recognition** (**OCR**) and other methods such as segmentation and detection to read vehicle registration plates.
+
+The best results in an ANPR system can be obtained with an **infrared** (**IR**) camera, because the segmentation steps for detection and OCR  segmentation are easy and clean, and they minimize errors. This is due  to the laws of light, the basic one being that the angle of incidence  equals Angle reflection. We can see  this basic reflection when we see a smooth surface, such as a plane  mirror. Reflection off rough surfaces such as paper leads to a type of  reflection known as scatter or diffuse reflection. However, the majority of the country plates have a special characteristic named Retroreflection: the surface of the plate is made with a material that is covered with  thousands of tiny hemispheres that cause light to be reflected back to  the source, as we can see in the following diagram:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ed5fae93-3984-4fea-9471-7ec49ee64df5.png)
+
+If we use a camera with a filter-coupled,  structured infrared light projector, we can retrieve just the infrared  light, and then we have a very high-quality image to segment, with which we can subsequently detect and recognize the plate number independent  of any lighting environment, as shown in the following image:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/6e47e858-4aad-4696-a880-9a9c597ae176.png)
+
+We will not use IR photographs in this  chapter; we will use regular photographs so that we do not obtain the  best results, and we get a higher level of detection errors and higher  false recognition rate than if we used an IR camera. However, the steps  for both are the same.
+
+Each country has different license plate  sizes and specifications. It is useful to know these specifications in  order to get the best results and reduce errors. Algorithms used in this chapter are designed for explaining the basics of ANPR and designed for license plates used in Spain, but we can extend it to any country or specification.
+
+In this chapter, we will work with license  plates from Spain. In Spain, there are three different sizes and shapes  of license plates, but we will only use the most common (large) license  plate, which has a width of 520 mm and a height of 110 mm. Two groups of characters are separated by a 41 mm space, and a 14 mm space separates  each individual character. The first group of characters is four numeric digits, and the second group three letters excluding the vowels *A*, *E*, *I*, *O* or *U*, or the letters *N* or *Q*. All characters have dimensions of 45 mm by 77 mm.
+
+This data is important for character  segmentation, since we can check both the character and blank spaces to  verify that we get a character and no other image segment:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/07019619-1ecd-49d5-b697-15dd50ab3dd9.png)
+
+# ANPR algorithm
+
+Before explaining the ANPR code, we need to  define the main steps and tasks in the ANPR algorithm. ANPR is divided  into two main steps, plate detection and plate recognition:
+
+- Plate detection has the purpose of detecting the location of the plate in the whole camera frame.
+- When a plate is detected in an image, the  plate segment is passed to the second step (plate recognition), which  uses an OCR algorithm to determine the alphanumeric characters on the  plate.
+
+In the following diagram, we can see the two main algorithm steps, plate detection and plate recognition. After  these steps, the program paints in the camera image the plate's  characters that have been detected. The algorithms can return bad  results, or may not return any result:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e525e709-4de5-4d38-8ead-5c5d9cdf5e45.png)
+
+In each step shown in the previous diagram,  we will define three additional steps that are commonly used in pattern  recognition algorithms. These steps are as follows:
+
+1. **Segmentation**: This step detects and removes each patch/region of interest in the image.
+2. **Feature extraction**: This step extracts from each patch a set of characteristics.
+3. **Classification**: This step extracts each character from the plate recognition step, or classifies each image patch into a *plate* or *no plate* in the plate detection step.
+
+In the following diagram, we can see these pattern recognition steps in the application as a whole:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7680a112-73ce-4a98-93ed-0043e9eda9f8.png)
+
+Aside from the main application, whose  purpose is to detect and recognize a car plate number, we will briefly  explain two more tasks that are usually not explained:
+
+- How to train a pattern recognition system
+- How to evaluate it
+
+These tasks, however, can be  more important than the main application, because if we do not train the pattern recognition system correctly, our system can fail and not work  correctly; different patterns need different training and evaluation  processes. We need to evaluate our system with different environments,  conditions, and features to get the best results. These two tasks are  sometimes done together, since different features can produce different  results, which we can see in the evaluation section.
+
+# Plate detection
+
+In this step, we have to detect all the  plates in a current camera frame. To do this task, we divide it in to  two main steps: segmentation and segment classification. The feature  step is not explained because we use the image patch as a vector  feature.
+
+In the first step (segmentation), we will  apply different filters, morphological operations, contour algorithms,  and validations to retrieve parts of the image that could contain a  plate.
+
+In the second step (classification), we will apply an SVM classifier to each image patch, our feature. Before  creating our main application, we will train with two different  classes: *plate* and *non-plate*. We will work with  parallel frontal view color images with 800 pixels of width and that are taken between two and four meters from a car. These requirements are  important for correct segmentation. We can perform detection if we  create a multi-scale image algorithm.
+
+In the following image, we will shown each process involved in plate detection:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5e833bc2-4cdb-4c7c-90e3-0df63df03be9.png)
+
+The processes involved are as follows:
+
+- Sobel filter
+- Threshold operation
+- Close morphological operation
+- Mask of one of filled area
+- In red, possible detected plates (feature images)
+- Plates detected by SVM classifier
+
+
+
+# Segmentation
+
+Segmentation is the process of dividing an  image into multiple segments. This process is to simplify the image for  analysis and make feature extraction easier.
+
+One important feature of plate segmentation  is the high number of vertical edges in a license plate, assuming that  the image was taken frontally and the plate is not rotated and without  perspective distortion. This feature can be exploited during the first  segmentation step to eliminate regions that don't have any vertical  edges.
+
+Before finding vertical edges, we need to  convert the color image to a grayscale image (because color can't help  us in this task) and remove possible noise generated from the camera or  other ambient noise. We will apply a 5x5 gaussian blur and remove noise. If we don't apply a noise removal method, we can get a lot of vertical  edges that produce fail detection:
+
+```
+//convert image to gray 
+Mat img_gray; 
+cvtColor(input, img_gray, CV_BGR2GRAY); 
+blur(img_gray, img_gray, Size(5,5));
+```
+
+To find the vertical edges, we will use a Sobel filter and find the first horizontal derivate. The derivate is a mathematical  function that allows us to find vertical edges on an image. The  definition of the Sobel function in OpenCV is as follows:
+
+```
+void Sobel(InputArray src, OutputArray dst, int ddepth, int xorder, int yorder, int ksize=3, double scale=1, double delta=0, int borderType=BORDER_DEFAULT )
+```
+
+Here, ddepth is the destination image depth; xorder is the order of the derivate by *x*; yorder is the order of the derivate by *y*; ksize is the kernel size of one, three, five, or seven; scale is an optional factor for computed derivative values; delta is an optional value added to the result; and borderType is the pixel interpolation method.
+
+Then, for our case, we can use xorder=1, yorder=0, and ksize=3:
+
+```
+//Find vertical lines. Car plates have high density of vertical 
+lines 
+Mat img_sobel; 
+Sobel(img_gray, img_sobel, CV_8U, 1, 0, 3, 1, 0);
+```
+
+After applying a Sobel filter, we will apply a threshold filter to obtain a binary image with a threshold value obtained through Otsu's method. Otsu's algorithm needs an 8-bit  input image, and Otsu's method automatically determines the optimal  threshold value:
+
+```
+//threshold image 
+Mat img_threshold; 
+threshold(img_sobel, img_threshold, 0, 255, CV_THRESH_OTSU+CV_THRESH_BINARY);
+```
+
+To define Otsu's method in the threshold function, we will combine the type parameter with the CV_THRESH_OTSU value, and the threshold value parameter is ignored.
+
+When the CV_THRESH_OTSU value is defined, the threshold function returns the optimal threshold value obtained by Otsu's algorithm.
+
+By applying a close morphological operation, we can remove blank spaces between each vertical edge line and connect  all regions that have a high number of edges. In this step, we have  possible regions that can contain plates.
+
+First, we will define our structural element to use in our morphological operation. We will use the getStructuringElement function to define a structural rectangular element with a 17 by 3 dimension size in our case; this may be different in other image sizes:
+
+```
+Mat element = getStructuringElement(MORPH_RECT, Size(17, 3));
+```
+
+Then, we will use this structural element in a close morphological operation using the morphologyEx function:
+
+```
+morphologyEx(img_threshold, img_threshold, CV_MOP_CLOSE, element);
+```
+
+After applying these functions, we have  regions in the image that could contain a plate; however, most of the  regions do not contain license plates. These regions can be split by  means of connected component analysis, or by using the findContours function. This last function retrieves the contours of a binary image with  different methods and results. We only need to get the external contours with any hierarchical relationship and any polygonal approximation  results:
+
+```
+//Find contours of possibles plates 
+ vector< vector< Point>> contours; 
+ findContours(img_threshold, 
+    contours, // a vector of contours 
+    CV_RETR_EXTERNAL, // retrieve the external contours 
+    CV_CHAIN_APPROX_NONE); // all pixels of each contours
+```
+
+For each contour detected, extract the bounding rectangle of minimal area. OpenCV brings up the minAreaRect function for this task. This function returns a rotated RotatedRect rectangle class. Then, using a vector iterator over each contour, we can get the  rotated rectangle and make some preliminary validations before we  classify each region:
+
+```
+//Start to iterate to each contour founded 
+ vector<vector<Point>>::iterator itc= contours.begin(); 
+ vector<RotatedRect> rects; 
+
+ //Remove patch that has no inside limits of aspect ratio and 
+ area. 
+ while (itc!=contours.end()) { 
+     //Create bounding rect of object 
+     RotatedRect mr= minAreaRect(Mat(*itc)); 
+     if(!verifySizes(mr)){ 
+         itc= contours.erase(itc); 
+     }else{ 
+         ++itc; 
+         rects.push_back(mr); 
+     } 
+ }
+```
+
+We make basic validations for the regions  detected based on their area and aspect ratio. We will consider that a  region can be a plate if the aspect ratio is approximately *520/110 = 4.727272* (plate width divided by plate height), with an error margin of 40% and an area based on a minimum of 15 pixels and a maximum of 125 pixels for the height of the plate. These values are calculated depending on the image size and camera position:
+
+```
+bool DetectRegions::verifySizes(RotatedRect candidate ){ 
+    float error=0.4; 
+    //Spain car plate size: 52x11 aspect 4,7272 
+    const float aspect=4.7272; 
+    //Set a min and max area. All other patchs are discarded 
+    int min= 15*aspect*15; // minimum area 
+    int max= 125*aspect*125; // maximum area 
+    //Get only patches that match to a respect ratio. 
+    float rmin= aspect-aspect*error; 
+    float rmax= aspect+aspect*error; 
+
+    int area= candidate.size.height * candidate.size.width; 
+    float r= (float)candidate.size.width 
+    /(float)candidate.size.height; 
+    if(r<1) 
+        r= 1/r; 
+
+    if(( area < min || area > max ) || ( r < rmin || r > rmax )){ 
+        return false; 
+    }else{ 
+        return true; 
+    } 
+}
+```
+
+We can make even more improvements using the license plate's white background property. All plates have the same  background color, and we can use a flood fill algorithm to retrieve the  rotated rectangle for precise cropping.
+
+The first step to crop the license plate is  to get several seeds near the last rotated rectangle center. Then, we  will get the minimum size of the plate between the width and height, and use it to generate random seeds near the patch center.
+
+We want to select the white region, and we need several seeds to touch at least one white pixel. Then, for each seed, we use a floodFill function to draw a new mask image to store the new closest cropping region:
+
+```
+for(int i=0; i< rects.size(); i++){ 
+ //For better rect cropping for each possible box 
+ //Make floodFill algorithm because the plate has white background 
+ //And then we can retrieve more clearly the contour box 
+ circle(result, rects[i].center, 3, Scalar(0,255,0), -1); 
+ //get the min size between width and height 
+ float minSize=(rects[i].size.width < rects[i].size.height)? 
+ rects[i].size.width:rects[i].size.height; 
+ minSize=minSize-minSize*0.5; 
+ //initialize rand and get 5 points around center for floodFill algorithm 
+ srand ( time(NULL) ); 
+ //Initialize floodFill parameters and variables 
+ Mat mask; 
+ mask.create(input.rows + 2, input.cols + 2, CV_8UC1); 
+ mask= Scalar::all(0); 
+ int loDiff = 30; 
+ int upDiff = 30; 
+ int connectivity = 4; 
+ int newMaskVal = 255; 
+ int NumSeeds = 10; 
+ Rect ccomp; 
+ int flags = connectivity + (newMaskVal << 8 ) + CV_FLOODFILL_FIXED_RANGE + CV_FLOODFILL_MASK_ONLY; 
+ for(int j=0; j<NumSeeds; j++){ 
+     Point seed; 
+     seed.x=rects[i].center.x+rand()%(int)minSize-(minSize/2); 
+     seed.y=rects[i].center.y+rand()%(int)minSize-(minSize/2); 
+     circle(result, seed, 1, Scalar(0,255,255), -1); 
+     int area = floodFill(input, mask, seed, Scalar(255,0,0), &ccomp, Scalar(loDiff, loDiff, loDiff), Scalar(upDiff, upDiff, upDiff), flags);
+```
+
+The floodFill function fills a  connected component with a color into a mask image starting from a point seed, and sets the maximum lower and upper brightness/color difference  between the pixel to fill and the pixel's neighbors or pixel seed:
+
+```
+int floodFill(InputOutputArray image, InputOutputArray mask, Point seed, Scalar newVal, Rect* rect=0, Scalar loDiff=Scalar(), Scalar upDiff=Scalar(), int flags=4 )
+```
+
+The newval parameter is the new color we want to incorporate into the image when filling. The loDiff and upDiff parameters are the maximum lower and maximum upper brightness/color difference between the pixel to fill and the pixel neighbors or pixel seed.
+
+The parameter flag is a combination of the following bits:
+
+- **Lower bits**: These bits contain the connectivity  values, four (by default) or eight, used within the function.  Connectivity determines which neighbors of a pixel are considered.
+- **Upper bits**: These can be 0 or a combination of the following values: CV_FLOODFILL_FIXED_RANGE and CV_FLOODFILL_MASK_ONLY.
+
+CV_FLOODFILL_FIXED_RANGE sets the difference between the current pixel and the seed pixel. CV_FLOODFILL_MASK_ONLY will only fill the image mask and not change the image itself.
+
+Once we have a crop mask, we will get a  minimal area rectangle from the image mask points and check the validity size again. For each mask, a white pixel gets the position and uses  the minAreaRect function to retrieve the closest crop region:
+
+```
+//Check new floodFill mask match for a correct patch. 
+ //Get all points detected for get Minimal rotated Rect 
+ vector<Point> pointsInterest; 
+ Mat_<uchar>::iterator itMask= mask.begin<uchar>(); 
+ Mat_<uchar>::iterator end= mask.end<uchar>(); 
+ for( ; itMask!=end; ++itMask) 
+     if(*itMask==255) 
+         pointsInterest.push_back(itMask.pos()); 
+     RotatedRect minRect = minAreaRect(pointsInterest); 
+     if(verifySizes(minRect)){
+```
+
+The segmentation process is finished, and we have valid regions. Now, we can crop each detected region, remove  possible rotation, crop the image region, resize the image, and equalize the light of the cropped image regions.
+
+First, we need to generate the transform matrix with getRotationMatrix2D to remove possible rotations in the detected region. We need to pay attention to height, because RotatedRect can be returned and rotated at 90 degrees. So, we have to check the rectangle aspect and, if it is less than 1, we need to rotate it by 90 degrees:
+
+```
+//Get rotation matrix 
+float r= (float)minRect.size.width / (float)minRect.size.height; 
+float angle=minRect.angle; 
+if(r<1) 
+    angle=90+angle; 
+Mat rotmat= getRotationMatrix2D(minRect.center, angle,1);
+```
+
+With the transform matrix, we now  can rotate the input image by an affine transformation (an affine  transformation preserves parallel lines) with the warpAffine function, where we set the input and destination images, the transform matrix,  the output size (same as the input in our case), and the interpolation  method to use. We can define the border method and border value if  required:
+
+```
+//Create and rotate image 
+Mat img_rotated; 
+warpAffine(input, img_rotated, rotmat, input.size(), 
+CV_INTER_CUBIC);
+```
+
+After we rotate the image, we will crop the image with getRectSubPix, which crops and copies an image portion of width and height centered on a point. If the image is rotated, we need to change the width and  height sizes with the C++ swap function:
+
+```
+//Crop image 
+Size rect_size=minRect.size; 
+if(r < 1) 
+    swap(rect_size.width, rect_size.height); 
+Mat img_crop; 
+getRectSubPix(img_rotated, rect_size, minRect.center, img_crop);
+```
+
+Cropped images are not good for use in  training and classification since they do not have the same size. Also,  each image contains different light conditions, accentuating the  differences between them. To resolve this, we resize all the images to  the same width and height, and apply a light histogram equalization:
+
+```
+Mat resultResized; 
+resultResized.create(33,144, CV_8UC3); 
+resize(img_crop, resultResized, resultResized.size(), 0, 0, INTER_CUBIC); 
+//Equalize croped image 
+Mat grayResult; 
+cvtColor(resultResized, grayResult, CV_BGR2GRAY); 
+blur(grayResult, grayResult, Size(3,3)); 
+equalizeHist(grayResult, grayResult);
+```
+
+For each detected region, we store the cropped image and its position in a vector:
+
+```
+output.push_back(Plate(grayResult,minRect.boundingRect()));
+```
+
+Now that we have possible detected regions, we have to classify whether each possible region is a plate or not. In the next section, we are going to learn how to create a classification based on SVM.
+
+
+
+# Classification
+
+After we preprocess and segment all possible parts of an image, we now need to decide whether each segment is (or is not) a license plate. To do this, we will use an SVM algorithm.
+
+An SVM is a pattern recognition algorithm  included in a family of supervised learning algorithms that was  originally created for binary classification. Supervised learning is the machine learning algorithm technique that is trained with labeled data. We need to train the algorithm with an amount of data that is labeled;  each dataset needs to have a class.
+
+The SVM creates one or more hyperplanes, which are used to discriminate each class of data.
+
+A classic example is a 2D point set that defines two classes; the SVM searches the optimal line that differentiates each class:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/76b75cb8-b143-4a0c-96e8-4c7e1504ed9a.png)
+
+The first task before any classification is  to train our classifier; this is a job to be undertaken prior to the  main application and is referred to as "offline training." This is not  an easy job because it requires a sufficient amount of data to train the system, but a bigger dataset does not always imply the best results. In our case, we do not have enough data due to the fact that there are no  public license plate databases. Because of this, we need to take  hundreds of car photos, and then preprocess and segment all of them.
+
+We trained our system with 75 license plate  images and 35 images without license plates, containing a 144 x 33 pixel resolution. We can see a sample of this data in the following image.  This is not a large dataset, but sufficient to obtain decent results for our chapter. In a real application, we would need to train with more  data:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/9476ecc3-201b-4bcc-a20e-42f1531414e9.png)
+
+To easily understand how machine learning  works, we will proceed to use the image pixel features of the classifier algorithm (keep in mind that there are better methods and features to  train an SVM, such as **principal components analysis** (**PCA**), Fourier transform, and texture analysis).
+
+We need to create the images to train our system using the DetectRegions class and set the savingRegions variable to true in order to save the images. We can use the segmentAllFiles.sh bash script to repeat the process on all image files in a folder. This can be taken from the source code of the book.
+
+To make this easier, we will store all image training data that is processed and prepared into an XML file for use  directly with the SVM function. The trainSVM.cpp application creates this file using the folders and number of image files.
+
+Training data for a machine learning OpenCV algorithm is stored in an *N**M**N**M*
+
+The classes are stored in another matrix with nx1 size, where each class is identified by a float number.
+
+OpenCV has an easy way to manage a data file in the XML or YAML formats with the FileStorage class. This class lets us store and read OpenCV variables and structures, or  our custom variables. With this function, we can read the training data  matrix and training classes and save them in SVM_TrainingData and SVM_Classes:
+
+```
+FileStorage fs; 
+fs.open("SVM.xml", FileStorage::READ); 
+Mat SVM_TrainingData; 
+Mat SVM_Classes; 
+fs["TrainingData"] >>SVM_TrainingData; 
+fs["classes"] >>SVM_Classes;
+```
+
+Now, we have the training data in the SVM_TrainingData variable and labels in SVM_Classes. Then, we only have to create the training data object that connects  data and labels to be used in our machine learning algorithm. To do  this, we will use the TrainData class as an OpenCV pointer Ptr class as follows:
+
+```
+Ptr<TrainData> trainData = TrainData::create(SVM_TrainingData, ROW_SAMPLE, SVM_Classes);
+```
+
+We will create the classifier object using the SVM class using the Ptr or with OpenCV 4 using the std::shared_ptr OpenCV class:
+
+```
+Ptr<SVM> svmClassifier = SVM::create()
+```
+
+Now, we need to set the SVM parameters,  which define the basic parameters to use in an SVM algorithm. To do  this, we only have to change some object variables. After different  experiments, we will choose the next parameter's setup:
+
+```
+svmClassifier->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 1000, 0.01)); 
+svmClassifier->setC(0.1); 
+svmClassifier->setKernel(SVM::LINEAR);
+```
+
+We chose 1000 iterations for training, a C param variable optimization of 0.1, and finally a kernel function.
+
+We only need to train our classifier with the train function and the training data:
+
+```
+svmClassifier->train(trainData);
+```
+
+Our classifier is ready to predict a  possible cropped image using the predict function of our SVM class; this function returns the class identifier i. In our case, we will label the *plate* class with one and the *no plate* class with zero. Then, for each detected region that can be a plate, we will use SVM to classify it as *plate* or *no plate*, and save only the correct responses. The following code is a part of a main application called online processing:
+
+```
+vector<Plate> plates; 
+for(int i=0; i< posible_regions.size(); i++) 
+{ 
+    Mat img=posible_regions[i].plateImg; 
+    Mat p= img.reshape(1, 1);//convert img to 1 row m features 
+    p.convertTo(p, CV_32FC1); 
+    int response = (int)svmClassifier.predict( p ); 
+    if(response==1) 
+        plates.push_back(posible_regions[i]); 
+} 
+```
+
+# Plate recognition
+
+The second step in license plate recognition aims  to retrieve the characters of the license plate with OCR. For each  detected plate, we proceed to segment the plate for each character and  use an **artificial neural network** machine learning  algorithm to recognize the character. Also, in this section, you will  learn how to evaluate a classification algorithm.
+
+# OCR segmentation
+
+First, we will obtain a plate image patch as an input to the OCR segmentation function with an equalized histogram.  We then need to apply only a threshold filter and use this threshold  image as the input of a Find contours algorithm. We can observe this process in the following image:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/3757f86c-dde3-4c45-a768-43fbdd2f893a.png)
+
+This segmentation process is coded as follows:
+
+```
+Mat img_threshold; 
+threshold(input, img_threshold, 60, 255, CV_THRESH_BINARY_INV); 
+if(DEBUG) 
+    imshow("Threshold plate", img_threshold); 
+    Mat img_contours; 
+    img_threshold.copyTo(img_contours); 
+    //Find contours of possibles characters 
+    vector< vector< Point>> contours; 
+    findContours(img_contours, contours, // a vector of contours 
+        CV_RETR_EXTERNAL, // retrieve the external contours 
+        CV_CHAIN_APPROX_NONE); // all pixels of each contours
+```
+
+We used the CV_THRESH_BINARY_INV parameter to invert the threshold output by turning the white input values black  and the black input values white. This is needed to get the contours of  each character, because the contours algorithm searches for white  pixels.
+
+For each detected contour, we can make a  size verification and remove all regions where the size is smaller or  the aspect is not correct. In our case, the characters have a 45/77  aspect, and we can accept a 35% error of aspect for rotated or distorted characters. If an area is higher than 80%, we will consider that region to be a black block and not a character. For counting the area, we can  use the countNonZero function, which counts the number of pixels with a value higher than zero:
+
+```
+bool OCR::verifySizes(Mat r){ 
+    //Char sizes 45x77 
+    float aspect=45.0f/77.0f; 
+    float charAspect= (float)r.cols/(float)r.rows; 
+    float error=0.35; 
+    float minHeight=15; 
+    float maxHeight=28; 
+    //We have a different aspect ratio for number 1, and it can be ~0.2 
+    float minAspect=0.2; 
+    float maxAspect=aspect+aspect*error; 
+    //area of pixels 
+    float area=countNonZero(r); 
+    //bb area 
+    float bbArea=r.cols*r.rows; 
+    //% of pixel in area 
+    float percPixels=area/bbArea; 
+    if(percPixels < 0.8 && charAspect > minAspect && charAspect < 
+    maxAspect && r.rows >= minHeight && r.rows < maxHeight) 
+        return true; 
+    else 
+        return false; 
+}
+```
+
+If a segmented character is verified, we  have to preprocess it to set the same size and position for all  characters, and save it in a vector with the auxiliary CharSegment class. This class saves the segmented character image and the position that we need to order the characters, because the find contour algorithm does  not return the contours in the correct order required.
+
+
+
+# Character classification using a convolutional neural network
+
+Before we start to work with a convolutional neural network and deep  learning, we are going to introduce these topics and the tools to create our DNN. 
+
+Deep learning is part of the machine learning family and can be supervised, semi-supervised, or unsupervised. DNNs are not a new concept in the  scientific community. The term was introduced into the machine learning  community in 1986 by Rina Dechter, and into artificial neural networks  by Igor Aizenberg in the year 2000. But research in this area was  started in the early 1980, where studies such as neocognitron were the  inspiration for convolutional neural networks.
+
+But it wasn't before 2009 that deep learning started its revolution.  In 2009, as well as new research algorithms, advances in hardware  renewed interest in deep learning using NVidia GPUs to speed up training algorithms that previously could take days or months, and are now 100x  faster.
+
+A convolutional neural network, ConvNet, or CNN, is a class of Deep  Learning algorithm based on a feed-forward network and applied mainly to computer vision. CNNs use a variation of the multilayer perceptron,  allowing us to extract shift invariant features automatically. CNNs use  relatively little preprocessing compared to a hand classical machine learning engineered. Feature extraction is a major advantage over other machine learning algorithms.
+
+Convolutional neural networks consist of an input and output layer  with multiple hidden layers, like a classical artificial neural network, with the difference that the input normally is the raw pixels of the  image and the hidden layers consist of convolutional layers and pooling  layers, fully connected or normalized.
+
+Now, we are going to briefly explain the most frequently used layers in a convolutional neural network:
+
+- **Convolutional:** This layer applies a convolution  operation filter to the input, passing the result to the next layers.  This layer works like a typical computer vision filter (sobel, canny,  and so on), but the kernel filters are learned in the training phase.  The main benefit of using this layer is to reduce the common fully  connected feedforward neural networks, for example, a 100 x 100 image  has 10,000 weights, but, using CNN, the problem is reduced to the kernel size; for example, applying a kernel of 5 x 5 and 32 different filters, there are only *5\*5*32=800*. At the same time, the filters explode all the possibilities of feature extraction.
+- **Pooling:** This layer combines the outputs of a group of neurons into a single one. The most common is max pooling, which  returns the maximum value of the group of input neurons. Another  frequently used approach in deep learning is average pooling. This layer brings to the CNN the possibility of extracting higher-level features  in layers following.
+- **Flatten:** Flatten is not a DNN layer, but is a  common operation to convert a matrix to a simple vector; this step is  required to apply other layers and, finally, get the classification.
+- **Fully connected:** This is the same as the traditional multi-layer perceptron, where every neuron in the previous layer is connected to the next layer with an activation function.
+- **Dropout:** This layer is a regularization for reducing overfitting; it's a frequently used layer for performing accuracy on the model.
+- **Loss layer:** This is normally the last  layer in a DNN, and specifies how to train and calculate errors to  perform the predictions. A very common loss layer is Softmax for  classification.
+
+OpenCV deep learning is not designed to train deep  learning models, and it's not supported because there are very stable  and powerful open source projects focused only on deep learning, such as TensorFlow, Caffe, and Torch. Then, OpenCV has an interface to import  and read the most important models. 
+
+Then, we are going to develop our CNN for OCR  classification in TensorFlow, which is one of the most frequently used  and popular software libraries for deep learning, originally developed  by Google researchers and engineers.
+
+
+
+# Creating and training a convolutional neural network with TensorFlow
+
+This section will explore how to train a new TensorFlow model, but  before we start to create our model, we have to check our image dataset  and generate the resources that we need to train our models.
+
+# Preparing the data
+
+We have 30 characters and numbers, distributed along 702 images in  our dataset with the following distribution. We can check that there are more than 30 images for numbers, but some letters such as **K**, **M**, and **P**, have fewer images samples:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c8081a45-1377-4c63-a75a-be12b67f87da.png)
+
+In the following image, we can see a small sample of images from our dataset:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/16f3bd48-25b0-4376-8fad-8e77f402a737.png)
+
+This dataset is very small for deep learning. Deep learning requires a huge amount of samples and is a common technique. In some cases, use a  dataset augmentation over the original dataset. Dataset augmentation is a way of creating new samples by applying different transformations, such as rotations, flipping the image, perspective distortions, and adding  noise.
+
+There are multiple ways to augment a dataset: we can create our own script or use open source libraries for this task. We  are going to use Augmentor (https://github.com/mdbloice/Augmentor). Augmentor is a Python library that allows us to create the number of  samples we require by applying the transformations we think are more  convenient for our problem.
+
+To install Augmentor through pip, we have to execute the following command:
+
+```
+pip install Augmentor
+```
+
+After installing the library, we create a small Python script to generate and increase the number of samples changing variable number_samples and apply the following: random distortion; a shear; and skew and rotation distortion, as we can see in the next Python script:
+
+```
+import Augmentor
+number_samples = 20000
+p = Augmentor.Pipeline("./chars_seg/chars/")
+p.random_distortion(probability=0.4, grid_width=4, grid_height=4, magnitude=1)
+p.shear(probability=0.5, max_shear_left=5, max_shear_right=5)
+p.skew_tilt(probability=0.8, magnitude=0.1)
+p.rotate(probability=0.7, max_left_rotation=5, max_right_rotation=5)
+p.sample(number_samples)
+```
+
+This script will generate an output folder where all the images will be stored, maintaining the same paths as the original path. We need to generate two datasets, one for training, and another  to test our algorithm. Then, we are going to generate one of 20,000  images for training and 2,000 for test by changing the number_samples.
+
+Now that we have sufficient images, we have to feed them into the  TensorFlow algorithm. TensorFlow allows multiple input data formats,  such as a CSV file with images and labels, Numpy data files, and the  recommended TFRecordDataset.
+
+Visit http://blog.damiles.com/2018/06/18/tensorflow-tfrecodataset.html for more info about why it is better to use TFRecordDataset instead of CSV files with image references.
+
+Before generating TFRecordDataset, we need to have installed the TensorFlow software. We can install it using pip with the following command for the CPU:
+
+```
+pip install tensorflow
+```
+
+Or, if you have an NVIDIA card with Cuda support, you can use the GPU distribution:
+
+```
+pip install tensorflow-gpu
+```
+
+Now, we can create the dataset file to train our model using the script provided, create_tfrecords_from_dir.py, passing two parameters, the input folder where the images are located, and the output file. We have to call this script twice, once for training and another for testing, to generate both files  separately. We can see an example of the call in the next snippet:
+
+```
+python ./create_tfrecords_from_dir.py -i ../data/chars_seg/DNN_data/test -o ../data/chars_seg/DNN_data/test.tfrecords
+python ./create_tfrecords_from_dir.py -i ../data/chars_seg/DNN_data/train -o ../data/chars_seg/DNN_data/train.tfrecords
+```
+
+The script generates test.tfrecords and train.tfrecords files, where the labels are numbers assigned automatically and ordered by folder name. The train folder must have the following structure:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/f323a5cc-2719-4aab-8653-f411831393ed.png)
+
+Now, we have the datasets and we are ready to create our model and start to train and evaluate.
+
+# Creating a TensorFlow model
+
+TensorFlow is an open source software library that focuses on  high-performance numerical computation and deep learning with access and support to CPUs, GPUs, and TPUs (Tensor Process Units, new Google  hardware specialized for deep learning purposes). This library is not an easy library and has a high learning curve, but the introduction of  Keras (a library on top of TensorFlow) as a part of TensorFlow makes the learning curve easier, but still requires a huge learning curve itself. 
+
+In this chapter, we cannot explain how to use TensorFlow because we  will require a separate book for this topic alone, but we are going to  explain the structure of the CNN we are going to use. We will show how  to use an online visual tool called TensorEditor to generate, in a few  minutes, TensorFlow code that we can download and train locally on our  computer, or use the same online tool to train our model if we don't  have enough computer processing power. If you want to read about and  learn TensorFlow, we suggest you read any of the relevant Packt  Publishing books or the TensorFlow tutorials.
+
+The CNN layer structure that we are going to create is a simple convolutional network:
+
+- **Convolutional Layer 1:** 32 filters of 5 x 5 with ReLU activation function
+- **Pooling Layer 2:** Max pooling with 2 x 2 filters and a stride of 2
+- **Convolutional Layer 3:** 64 filters of 5 x 5 with ReLU activation function
+- **Pooling Layer 4:** Max pooling with 2 x 2 filter and a stride of 2
+- **Dense Layer 5:** 1,024 neurons
+- **Dropout Layer 6:** Dropout regularization with a rate of 0.4
+- **Dense Layer 7:** 30 neurons, one for each number and character
+- **SoftMax Layer 8:** Softmax layer loss function with gradient descent optimizer with a learning rate of 0.001 and 20,000 training steps.
+
+We can see a basic graph of the model we have to generate in the following diagram:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/9f5a7f9c-713c-40eb-8cab-d4742aa07210.png)
+
+TensorEditor is an online tool that allows us to create models for  TensorFlow and train on the cloud, or download the Python 2.7 code and  execute it locally. After registering for the online free tool, we can generate the model, as shown in the following diagram:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/40f4db61-353d-4c0c-84d4-65bdd3869841.png)
+
+To add a layer, we choose it by clicking on the left-hand menu and it will appear on the editor. We can drag and drop to change its position  and double-click to change its parameters. Clicking on the small dots of each node, allows us to link each node/layer. This editor shows us the  parameters we choose visually and the output size of each layer; we can  see in the following image that the convolutional layer has a kernel of 5 x 5 x 32 and an output of n x 20 x 20 x 32; the n variable means that we can compute one or multiple images at the same time for each training epoch:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/913ff869-6912-46f7-8d9d-0210ff43a623.png)
+
+After creating the CNN layer structure in TensorEditor, we can now download the TensorFlow code by clicking on Generate code and downloading the Python code, as shown in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ea6a500f-581c-4ad7-8160-0df9ff3eb301.png)
+
+Now, we can start training our algorithm using TensorFlow with the following command:
+
+```
+python code.py --job-dir=./model_output
+```
+
+Here, the --job-dir parameter defines the output folder in which we store the output model trained. In the terminal, we can see  the output of each iteration, together with the loss result and  accuracy. We can see an example in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8f0dd6cb-77d0-4c74-a2bf-baf2b642d9cc.png)
+
+Output of the algorithm training command
+
+We can use TensorBoard, a TensorFlow tool, which gives us information about the training and graphs. To activate TensorBoard, we have to use  this command:
+
+```
+tensorboard --logdir ./model_output
+```
+
+Here, the --logdir parameter, where we save our model and  checkpoints, must be identified. After launching TensorBoard, we can  access it with this URL: http://localhost:6006. This awesome  tool shows us the graph generated by TensorFlow, where we can explore  every operation and variable, clicking on each node, as we can see in  the next screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7c223d12-0a07-4ae7-a7f8-97a23e229e44.png)
+
+TensorBoard GRAPHS
+
+
+
+Or, we can explore the results obtained, such as for loss values in  each epoch step or accuracy metrics. The results obtained with the  training model per epoch are shown in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/fed89909-d63f-426f-8287-5365e9713f9c.png)
+
+Training on an i7 6700HQ CPU with 8  GB RAM takes a long time, around 50 hours; a bit more than two days of  training. If you use a basic NVIDIA GPU, this task can be reduced to  around 2-3 hours.
+
+If you want to train in TensorEditor, it can take 10-15 minutes and  will download the model after training the models, with the possibility  of downloading the full output model or a frozen and optimized model.  The concept of freezing will be described in the following section, *Preparing a model for OpenCV*. We can see the result of training in TensorEditor in the next screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/bbd1807b-5f04-46c3-af76-ac6ad27ed847.png)
+
+Training in TensorEditor
+
+Analyzing the results obtained, we attain an accuracy level of around 96%, much better than the old algorithm explained in the second edition of this book, where we attained an accuracy level of only 92% using  feature extraction and a simple artificial neural network.
+
+After we finish training, all models and variables are stored in the  job folder defined when we launched the TensorFlow script. Now, we have  to prepare the finished result to integrate and import it into OpenCV.
+
+
+
+# Preparing a model for OpenCV
+
+TensorFlow generates multiple files when we train a new model,  generating files for events that store accuracy and loss, and other  metrics obtained in each step; also, some files will store the variable  results obtained for each step or checkpoint. These variables are the weights that networks learn in training. But it's not convenient to share all these  files in production, as OpenCV would not be able to manage them.  At the same time, there are nodes that are used only for training and  not for inference. We have to remove these nodes from the model, nodes  such as dropouts layers or training input iterators.
+
+To put our model into production, we need to do the following:
+
+- Freeze our graph
+- Remove nodes/layers that are not required
+- Optimize for inference
+
+*Freezing* takes the graph definition and a set of checkpoints and merges them together into a single file, converting the variables  into constants. To freeze our model, we have to move into the saved  model folder and execute the following script provided by TensorFlow:
+
+```
+freeze_graph --input_graph=graph.pbtxt --input_checkpoint=model.ckpt-20000 --output_graph frozen_graph.pb --output_node_names=softmax_tensor
+```
+
+Now, we generate a new file called *frozen_graph.pb,* which is the merged and frozen graph. Then, we have to remove the input layers  used for training purposes. If we review the graph using TensorBoard, we can see that our input to the first convolutional neural network is the IteratorGetNext node, which we have to cut and set as a single layer input of a 20 x 20 pixel image of one channel. Then, we can use the TensorFlow *transform_graph* application, which allows us to change the graph, cutting or modifying the TensorFlow model  graph. To remove the layer connected to the ConvNet, we execute the  following code:
+
+```
+transform_graph --in_graph="frozen_graph.pb" --out_graph="frozen_cut_graph.pb" --inputs="IteratorGetNext" --outputs="softmax_tensor" --transforms='strip_unused_nodes(type=half, shape="1,20,20,1") fold_constants(ignore_errors=true) fold_batch_norms fold_old_batch_norms sort_by_execution_order'
+```
+
+It's very important to add the sort_by_execution_order parameter to ensure that the layers are stored in order in the model graph, to allow OpenCV to correctly import the model. OpenCV sequentially imports the layers from the graph model, checking that all previous  layers, operations, or variables are imported; if not, we will receive  an import error. TensorEditor doesn't take care of the execution order in the graph to construct and execute it.
+
+After executing transform_graph, we have a new model saved as frozen_cut_graph.pb. The final step requires us to optimize the graph, removing all training operations and layers such as dropout. We are going to use the  following command to optimize our model for production/inference; this  application is provided by TensorFlow:
+
+```
+optimize_for_inference.py --input frozen_cut_graph.pb --output frozen_cut_graph_opt.pb --frozen_graph True --input_names IteratorGetNext --output_names softmax_tensor
+```
+
+The output of this is a file called frozen_cut_graph_opt.pb. This file is our final model, which we can import and use in our OpenCV code.
+
+# Import and use model in OpenCV C++ code
+
+Importing a deep learning model into OpenCV is very easy; we can import models from TensorFlow, Caffe, Torch, and Darknet. All imports are very similar, but, in this chapter, we are going to learn how to import a TensorFlow model. 
+
+To import a TensorFlow model, we can use the readNetFromTensorflow method, which accepts two parameters: the first parameter is the model in protobuf format, and the second is the text graph definition in protobuf format, too. The second parameter is not required, but in our case, we have to prepare our model for inference, and we have to optimize it to import to OpenCV too. Then, we can import the model with the following code:
+
+```
+dnn::Net dnn_net= readNetFromTensorflow("frozen_cut_graph_opt.pb");
+```
+
+To classify each detected segment of our plate, we have to put each image segment into our dnn_net and obtain the probabilities. This is the full code to classify each segment:
+
+```
+for(auto& segment : segments){
+    //Preprocess each char for all images have same sizes
+    Mat ch=preprocessChar(segment.img);
+    // DNN classify
+    Mat inputBlob;
+    blobFromImage(ch, inputBlob, 1.0f, Size(20, 20), Scalar(), true, false);
+    dnn_net.setInput(inputBlob);
+
+    Mat outs;
+    dnn_net.forward(outs);
+    cout << outs << endl;
+    double max;
+    Point pos;
+    minMaxLoc( outs, NULL, &max, NULL, &pos);
+    cout << "---->" << pos << " prob: " << max << " " << strCharacters[pos.x] << endl;
+    
+    input->chars.push_back(strCharacters[pos.x]);
+    input->charsPos.push_back(segment.pos);
+}
+```
+
+We are going to explain this code a bit more. First, we  have to preprocess each segment to get the same-sized image with 20 x 20 pixels. This preprocessed image must be converted as a blob saved in a Mat structure. To convert it to a blob, we are going to use the blobFromImage function, which creates four-dimensional data with optional resize, scale, crop, or swap channel blue and red. The function has the following parameters:
+
+```
+void cv::dnn::blobFromImage ( 
+    InputArray image,
+    OutputArray blob,
+    double scalefactor = 1.0,
+    const Size & size = Size(),
+    const Scalar & mean = Scalar(),
+    bool swapRB = false,
+    bool crop = false,
+    int ddepth = CV_32F 
+) 
+```
+
+The definitions of each one are as follows:
+
+- image: Input image (with one, three, or four channels).
+- blob: Output blob mat.
+- size: Spatial size for the output image.
+- mean: Scalar with mean values, which are subtracted from  channels. Values are intended to be in (mean-R, mean-G, mean-B) order if the image has BGR ordering and swapRB is true.
+- scalefactor: Multiplier for image values.
+- swapRB: A flag that indicates the need to swap the first and last channels in a three-channel image.
+- crop: A flag that indicates whether the image will be cropped after resizing
+- ddepth: Depth of output blob. Choose CV_32F or CV_8U.
+
+This generated blob can be added as an input to our DNN using dnn_net.setInput(inputBlob).
+
+Once the input blob is set up for our network, we only need to pass the input forward to obtain our results. This is the purpose of the dnn_net.forward(outs) function, which returns a Mat with the softmax prediction results. The result obtained is a row of Mat where each column is the label; then, to get the label with the highest probability, we only need to get the max position of this Mat. We can use the minMaxLoc function to retrieve the label value, and if we so desire, the probability value too. 
+
+Finally, to close the ANPR application, we only have to save, in the  input plate data, the new segment position and the label obtained.
+
+If we execute the application, we will obtain a result like this:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/dec8a36c-c593-4a97-9513-4a089572ceb5.png)
+
+# Summary
+
+In this chapter, you learned how an Automatic Number Plate  Recognition program works and its two important steps: plate  localization and plate recognition.
+
+In the first step, you learned how to segment an image by looking for patches where we may have a plate, and using simple heuristics and the  SVM algorithm to make a binary classification for patches with *plates* and *no plates*.
+
+In the second step, you learned how to segment using the find  contours algorithm, create a deep learning model with TensorFlow, and  train and import it into OpenCV. You also learned how to increase the  number of samples in your dataset using augmentation techniques.
+
+In the next chapter, you will learn how to create a face recognition application using eigenfaces and deep learning.
+
 # Chapter 05 Face Detection and Recognition with the DNN Module
 
+In this chapter, we are going to learn the main techniques of face  detection and recognition. Face detection is the process whereby faces  are located in a whole image. In this chapter, we are going to cover  different techniques to detect faces in images, from classic algorithms  using cascade classifiers with Haar features to newer techniques using  deep learning. Face recognition is the process of identifying a person  that appears in an image. We are going to cover the following topics in  this chapter:
+
+- Face detection with different methods
+- Face preprocessing
+- Training a machine learning algorithm from collected faces
+- Face recognition
+- Finishing touches
+
+
+
+# Introduction to face detection and face recognition
+
+Face recognition is the process of putting a label to a known face. Just like humans learn to recognize their  family, friends, and celebrities just by seeing their face, there are  many techniques for recognize a face in computer vision.
+
+These generally involve four main steps, defined as follows:
+
+1. **Face detection**: This is the process of locating a face region in an image (the large rectangle near the center of the following screenshot). This step does not care who the person  is, just that it is a human face.
+2. **Face preprocessing**: This is the process of adjusting the face image to look clearer and similar to other faces (a  small grayscale face in the top center of the following screenshot).
+3. **Collecting and learning faces**: This is a process of saving many preprocessed faces (for each person that should be  recognized), and then learning how to recognize them.
+4. **Face recognition**: This is the process that checks which of the collected people are most similar to the face in  the camera (a small rectangle in the top right of the following  screenshot).
+
+Note that the phrase **face recognition** is often used by the general public to refer to finding the positions of faces (that is, face detection, as described in s*tep 1*), but this book will use the formal definition of face recognition referring to s*tep 4*, and face detection referring to *S**tep 1*.
+
+The following screenshot shows the final WebcamFaceRec project, including a small rectangle at the top-right corner highlighting the  recognized person. Also, notice the confidence bar that is next to the  preprocessed face (a small face at the top center of the rectangle  marking the face), which in this case shows roughly 70 percent  confidence that it has recognized the correct person:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/f70112df-23fd-4fe4-b963-3a8f308764c6.jpg)
+
+Current face detection techniques are quite reliable in real-world  conditions, whereas current face recognition techniques are much less  reliable when used in real-world conditions. For example, it is easy to  find research papers showing face recognition accuracy rates above 95  percent, but when testing those same algorithms yourself, you may often  find that accuracy is lower than 50 percent. This comes from the fact  that current face recognition techniques are very sensitive to exact  conditions in images, such as the type of lighting, direction of  lighting and shadows, exact orientation of the face, expression of the  face, and the current mood of the person. If they are all kept constant  when training (collecting images), as well as when testing (from the  camera image), then face recognition should work well, but if the person was standing to the left-hand side of the lights in a room when  training, and then stood to the right-hand side while testing with the  camera, it may give quite bad results. So, the dataset used for training is very important.
+
+Face preprocessing aims to reduce these problems by making sure the  face always appears to have similar brightness and contrast, and perhaps making sure the features of the face will always be in the same  position (such as aligning the eyes and/or nose to certain positions). A good face preprocessing stage will help improve the reliability of the  whole face recognition system, so this chapter will place some emphasis  on face preprocessing methods.
+
+Despite the big claims about using face recognition for security in  the media, it is unlikely that the current face recognition methods  alone are reliable enough for any true security system. However, they  can be used for purposes that don't need high reliability, such as  playing personalized music for different people entering a room, or a  robot that says your name when it sees you. There are also various  practical extensions to face recognition, such as gender recognition,  age recognition, and emotion recognition.
+
+# Face detection
+
+Until the year 2000, there were many different techniques used for finding faces, but all of them were either very slow, very  unreliable, or both. A major change came in 2001 when Viola and Jones  invented the Haar-based cascade classifier for object detection, and in  2002 when it was improved by Lienhart and Maydt. The result is an object detector that is both fast (it can detect faces in real time on a  typical desktop with a VGA webcam) and reliable (it detects  approximately 95 percent of frontal faces correctly). This object  detector revolutionized the field of face recognition (as well as that  of robotics and computer vision in general), as it finally allowed  real-time face detection and face recognition, especially as Lienhart  himself wrote the object detector that comes free with OpenCV! It works  not only for frontal faces but also side-view faces (referred to as  profile faces), eyes, mouths, noses, company logos, and many other  objects.
+
+This object detector was extended in OpenCV v2.0 to also use LBP  features for detection based on the work done by Ahonen, Hadid, and  Pietikäinen in 2006, as LBP-based detectors are potentially several  times faster than Haar-based detectors, and don't have the licensing  issues that many Haar detectors have.
+
+OpenCV has implemented deep learning from v3.4 and it's more stable in v4.0. In this chapter, we will show how to use **Single Shot Multibox Detector** (**SSD**) algorithm for face detection.
+
+The basic idea of the Haar-based face detector is that if you look at most frontal faces, the region with the eyes should be darker than the  forehead and cheeks, the region with the mouth should be darker than the cheeks, and so on. It typically performs about 20 stages of comparisons like this to decide whether it is a face or not, but it must do this at each possible position in the image, and for each possible size of the  face, so in fact, it often does thousands of checks per image. The basic idea of the LBP-based face detector is similar to the Haar-based one,  but it uses histograms of pixel intensity comparisons, such as edges,  corners, and flat regions.
+
+Rather than have a person decide which comparisons would best define a face, both Haar and LBP-based face detectors can be automatically  trained to find faces from a large set of images, with the information  stored as XML files to be used later. These cascade classifier detectors are typically trained using at least 1,000 unique face images and  10,000 non-face images (for example, photos of trees, cars, and text),  and the training process can take a long time even on a multi-core  desktop (typically a few hours for LBP, but one week for Haar!).  Luckily, OpenCV comes with some pretrained Haar and LBP detectors for  you to use! In fact, you can detect frontal faces, profile (side-view)  faces, eyes, or noses just by loading different cascade classifier XML  files into the object detector and choosing between the Haar and LBP  detector, based on which XML file you choose.
+
+
+
+# Implementing face detection using OpenCV cascade classifiers
+
+As mentioned previously, OpenCV v2.4 comes with various pretrained XML detectors that you can use for different purposes. The  following table lists some of the most popular XML files:
+
+| **Type of cascade classifier**             | **XML filename**                    |
+| ------------------------------------------ | ----------------------------------- |
+| Face detector (default)                    | haarcascade_frontalface_default.xml |
+| Face detector (fast Haar)                  | haarcascade_frontalface_alt2.xml    |
+| Face detector (fast LBP)                   | lbpcascade_frontalface.xml          |
+| Profile (side-looking) face detector       | haarcascade_profileface.xml         |
+| Eye detector (separate for left and right) | haarcascade_lefteye_2splits.xml     |
+| Mouth detector                             | haarcascade_mcs_mouth.xml           |
+| Nose detector                              | haarcascade_mcs_nose.xml            |
+| Whole person detector                      | haarcascade_fullbody.xml            |
+
+ 
+
+Haar-based detectors are stored in the data/haarcascades folder and LBP-based detectors are stored in the datal/bpcascades folder of the OpenCV root folder, such as C:\\opencv\\data\\lbpcascades.
+
+For our face recognition project, we want to detect frontal faces, so let's use the LBP face detector because it is the fastest and doesn't  have patent licensing issues. Note that the pretrained LBP face detector that comes with OpenCV v2.x is not tuned as well as the pretrained Haar face detectors, so if you want more reliable face detection then you  may want to train your own LBP face detector or use a Haar face  detector.
+
+# Loading a Haar or LBP detector for object or face detection
+
+To perform object or face detection, first you must load the pretrained XML file using OpenCV's CascadeClassifier class as follows:
+
+```
+    CascadeClassifier faceDetector; 
+    faceDetector.load(faceCascadeFilename);
+```
+
+This can load Haar or LBP detectors just by giving a different  filename. A very common mistake when using this is to provide the wrong  folder or filename, but depending on your build environment, the load() method will either return false or generate a C++ exception (and exit your program with an assert error). So it is best to surround the load() method with a try... catch block, and display an error message to the user if something went wrong. Many  beginners skip checking for errors, but it is crucial to show a help  message to the user when something did not load correctly; otherwise,  you may spend a very long time debugging other parts of your code before eventually realizing something did not load. A simple error message can be displayed as follows:
+
+```
+    CascadeClassifier faceDetector; 
+    try { 
+      faceDetector.load(faceCascadeFilename); 
+    } catch (cv::Exception e) {} 
+    if ( faceDetector.empty() ) { 
+      cerr << "ERROR: Couldn't load Face Detector ("; 
+      cerr << faceCascadeFilename << ")!" << endl; 
+      exit(1); 
+    }
+```
+
+# Accessing the webcam
+
+To grab frames from a computer's webcam, or even from a video file, you can simply call the VideoCapture::open() function with the camera number or video filename, then grab the frames using the C++ stream operator, as mentioned in the, *Accessing the webcam* section in [Chapter 1](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/692e59a0-da67-4f17-bcf1-9600e5b03d37.xhtml), *Cartoonifier and Skin Changer for Raspberry Pi*.
+
+# Detecting an object using the Haar or LBP classifier
+
+Now that we have loaded the classifier  (just once during initialization), we can use it to detect faces in each new camera frame. But first, we should do some initial processing of  the camera image just for face detection by performing the following  steps:
+
+1. **Grayscale color conversion**: Face detection only works on grayscale images. So we should convert the color camera frame to grayscale.
+2. **Shrinking the camera image**: The speed of face  detection depends on the size of the input image (it is very slow for  large images but fast for small images), and yet detection is still  fairly reliable, even at low resolutions. So we should shrink the camera image to a more reasonable size (or use a large value for minFeatureSize in the detector, as explained in the following sections).
+3. **Histogram equalization**: Face detection is not as  reliable in low light conditions. So we should perform histogram  equalization to improve the contrast and brightness.
+
+**Grayscale color conversion**
+
+We can easily convert an RGB color image to grayscale using the cvtColor() function. But we should only do this if we know we have a color image (that is,  it is not a grayscale camera), and we must specify the format of our  input image (usually three-channel BGR on desktop or four-channel BGRA  on mobile). So, we should allow three different input color formats, as  shown in the following code:
+
+```
+    Mat gray; 
+    if (img.channels() == 3) { 
+      cvtColor(img, gray, COLOR_BGR2GRAY); 
+    } 
+    else if (img.channels() == 4) { 
+      cvtColor(img, gray, COLOR_BGRA2GRAY); 
+    } 
+    else { 
+      // Access the grayscale input image directly. 
+      gray = img; 
+    }
+```
+
+**Shrinking the camera image**
+
+We can use the resize() function to shrink an image to a certain size or scale factor. Face detection usually works quite well for any image whose size is greater than 240 x 240 pixels  (unless you need to detect faces that are far away from the camera),  because it will look for any faces larger than the minFeatureSize (typically 20 x 20 pixels). So let's shrink the camera image to be 320 pixels  wide; it doesn't matter if the input is a VGA webcam or a five megapixel HD camera. It is also important to remember and enlarge the detection  results, because if you detect faces in a shrunken image, then the  results will also be shrunken. Note that instead of shrinking the input  image, you could use a large value for the minFeatureSize variable in the detector instead. We must also ensure the image does not become  fatter or thinner. For example, a widescreen 800 x 400 image when shrunk to 300 x 200 would make a person look thin. So, we must keep the aspect ratio (the ratio of width to height) of the output the same as the  input. Let's calculate how much to shrink the image width by, then apply the same scale factor to the height as well, as follows:
+
+```
+    const int DETECTION_WIDTH = 320; 
+    // Possibly shrink the image, to run much faster. 
+    Mat smallImg; 
+    float scale = img.cols / (float) DETECTION_WIDTH; 
+    if (img.cols > DETECTION_WIDTH) { 
+      // Shrink the image while keeping the same aspect ratio. 
+      int scaledHeight = cvRound(img.rows / scale); 
+      resize(img, smallImg, Size(DETECTION_WIDTH, scaledHeight)); 
+    } 
+    else { 
+      // Access the input directly since it is already small. 
+      smallImg = img; 
+    }
+```
+
+**Histogram equalization**
+
+We can easily perform histogram equalization to improve the contrast and brightness of an image, using the equalizeHist() function. Sometimes this will make the image look strange, but in general it  should improve the brightness and contrast, and help face detection. The equalizeHist() function is used as follows:
+
+```
+    // Standardize the brightness & contrast, such as 
+    // to improve dark images. 
+    Mat equalizedImg; 
+    equalizeHist(inputImg, equalizedImg);
+```
+
+# Detecting the face
+
+Now that we have converted the image to grayscale, shrunk the image, and equalized the histogram, we are ready to detect the faces using the CascadeClassifier::detectMultiScale() function! There are many parameters, listed as follows, that we pass to this function:
+
+- minFeatureSize: This parameter determines the minimum  face size that we care about, typically 20 x 20 or 30 x 30 pixels, but  this depends on your use case and image size. If you are performing face detection on a webcam or smartphone where the face will always be very  close to the camera, you could enlarge this to 80 x 80 to have much  faster detection, or if you want to detect far away faces, such as on a  beach with friends, then leave this as 20 x 20.
+- searchScaleFactor: This parameter determines how many different sizes of faces to look for; typically it would be 1.1 for good detection, or 1.2 for faster detection, which does not find the face as often.
+- minNeighbors: This parameter determines how sure the detector should be that it has detected a face; its typically a value of 3, but you can set it higher if you want more reliable faces, even if many faces are not detected.
+- flags: This parameter allows you to specify whether to look for all faces (default), or only look for the largest face (CASCADE_FIND_BIGGEST_OBJECT). If you only look for the largest face, it should run faster. There are  several other parameters you can add to make the detection about 1% or  2% faster, such as CASCADE_DO_ROUGH_SEARCH or CASCADE_SCALE_IMAGE.
+
+The output of the detectMultiScale() function will be a std::vector of the cv::Rect type object. For example, if it detects two faces, then it will store an array of two rectangles in the output. The detectMultiScale() function is used as follows:
+
+```
+    int flags = CASCADE_SCALE_IMAGE; // Search for many faces. 
+    Size minFeatureSize(20, 20);     // Smallest face size. 
+    float searchScaleFactor = 1.1f;  // How many sizes to search. 
+    int minNeighbors = 4;            // Reliability vs many faces. 
+
+// Detect objects in the small grayscale image. 
+std::vector<Rect> faces; 
+faceDetector.detectMultiScale(img, faces, searchScaleFactor,  
+                minNeighbors, flags, minFeatureSize);
+```
+
+We can see whether any faces were detected by looking at the number  of elements stored in our vector of rectangles, that is, by using the objects.size() function.
+
+
+
+As mentioned earlier, if we gave a shrunken image to the face detector, the results will also be shrunken, so we  need to enlarge them if we want to see the face regions for the original image. We also need to make sure faces on the border of the image stay  completely within the image, as OpenCV will now raise an exception if  this happens, as shown by the following code:
+
+```
+    // Enlarge the results if the image was temporarily shrunk. 
+    if (img.cols > scaledWidth) { 
+      for (auto& object:objects ) { 
+        object.x = cvRound(object.x * scale); 
+        object.y = cvRound(object.y * scale); 
+        object.width = cvRound(object.width * scale); 
+        object.height = cvRound(object.height * scale); 
+      } 
+    } 
+    // If the object is on a border, keep it in the image. 
+    for (auto& object:objects) { 
+      if (object.x < 0) 
+        object.x = 0; 
+      if (object.y < 0) 
+        object.y = 0; 
+      if (object.x + object.width > img.cols) 
+        object.x = img.cols - object.width; 
+      if (object.y + object.height > img.rows) 
+        object.y = img.rows - object.height; 
+    }
+```
+
+Note that the preceding code will look for all faces in the image,  but if you only care about one face, then you could change the flags variable as follows:
+
+```
+    int flags = CASCADE_FIND_BIGGEST_OBJECT |  
+                CASCADE_DO_ROUGH_SEARCH;
+```
+
+The WebcamFaceRec project  includes a wrapper around OpenCV's Haar or LBP detector, to make it  easier to find a face or eye within an image, for example:
+
+```
+Rect faceRect;    // Stores the result of the detection, or -1. 
+int scaledWidth = 320;     // Shrink the image before detection. 
+detectLargestObject(cameraImg, faceDetector, faceRect, scaledWidth); 
+if (faceRect.width > 0) 
+cout << "We detected a face!" << endl;
+```
+
+Now that we have a face rectangle, we can use it in many ways, such  as to extract or crop the face from the original image. The following  code allows us to access the face:
+
+```
+    // Access just the face within the camera image. 
+    Mat faceImg = cameraImg(faceRect);
+```
+
+The following photo shows the typical rectangular region given by the face detector:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/9d7e4f4a-bc86-4e6d-9497-b67dedb8b82a.jpg)
+
+- [Copy](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/7edb9b73-12a1-4f2f-9625-e0668b07fa0d.xhtml#)
+- [Add Highlight](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/7edb9b73-12a1-4f2f-9625-e0668b07fa0d.xhtml#)
+- [ 			Add Note 		](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/7edb9b73-12a1-4f2f-9625-e0668b07fa0d.xhtml#)
+
+
+
+# Implementing face detection using the OpenCV deep learning module
+
+From OpenCV 3.4, the deep learning module was available as a contrib source (https://github.com/opencv/opencv_contrib), but from version 4.0, deep learning is part of OpenCV core. This means  that OpenCV deep learning is stable and in good maintenance.
+
+We can use a pretrained Caffe model based on the SSD deep learning  algorithm for faces. This algorithm allows us to detect multiple objects in an image in a single deep learning network, returning a class and  bounding box per object detected. 
+
+To load the pretrained Caffe, model we need to load two files:
+
+- Proto file or configuration model; in our case, the file is saved in data/deploy.prototxt
+- Binary trained model, which has the weights of each variable; in our case, the file is saved in data/res10_300x300_ssd_iter_140000_fp16.caffemodel
+
+The following code allows us to load the model into OpenCV:
+
+```
+dnn::Net net = readNetFromCaffe("data/deploy.prototxt", "data/res10_300x300_ssd_iter_14000_fp16.caffemodel");
+```
+
+After loading the deep learning network, per each frame that we  capture with the webcam, we have to convert as a blob image that deep  learning network can understand. We have to use the blobFromImage function as follows:
+
+```
+Mat inputBlob = blobFromImage(frame, 1.0, Size(300, 300), meanVal, false, false);
+```
+
+Where the first parameter is the input image, the second is a scaled  factor for each pixel value, the third is the output spatial size, the  fourth is a Scalar value to be subtracted from each channel, the fifth is a flag to swap the *B* and *R* channels, and the last parameter, and if we set the last parameter to true, it crops the image after resized.
+
+Now, we have prepared the input image for the deep neural network; to set it to the net, we have to call the following function:
+
+```
+net.setInput(inputBlob); 
+```
+
+Finally, we can call to network to predict as follows:
+
+```
+Mat detection = net.forward();
+```
+
+# Face preprocessing
+
+As mentioned earlier, face recognition is extremely vulnerable to  changes in lighting conditions, face orientation, face expression, and  so on, so it is very important to reduce these differences as much as  possible. Otherwise, the face recognition algorithm will often think  there is more similarity between the faces of two different people in  the same conditions, than between two images of the same person.
+
+The easiest form of face preprocessing is just to apply histogram equalization using the equalizeHist() function, like we just did for face detection. This may be sufficient for some  projects where the lighting and positional conditions won't change by  much. But for reliability in real-world conditions, we need many  sophisticated techniques, including facial feature detection (for  example, detecting eyes, nose, mouth, and eyebrows). For simplicity,  this chapter will just use eye detection and ignore other facial  features such as the mouth and nose, which are less useful.
+
+The following photo shows an enlarged view of a typical preprocessed  face, using the techniques that will be covered in this section:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a14d1f47-aa18-4284-9d1b-390644ebcf82.png)
+
+# Eye detection
+
+Eye detection can be very useful  for face preprocessing, because for frontal faces, you can always assume a person's eyes should be horizontal and on opposite sides of the face, and should have a fairly standard position and size within a face,  despite changes in facial expressions, lighting conditions, camera  properties, distance to camera, and so on.
+
+It is also useful to discard false positives, when the face detector  says it has detected a face and it is actually something else. It is  rare that the face detector and two eye detectors will all be fooled at  the same time, so if you only process images with a detected face and  two detected eyes, then it will not have many false positives (but will  also give fewer faces for processing, as the eye detector will not work  as often as the face detector).
+
+Some of the pretrained eye detectors that come with OpenCV v2.4 can  detect an eye whether it is open or closed, whereas some of them can  only detect open eyes.
+
+Eye detectors that detect open or closed eyes are as follows:
+
+- haarcascade_mcs_lefteye.xml (and haarcascade_mcs_righteye.xml)
+- haarcascade_lefteye_2splits.xml (and haarcascade_righteye_2splits.xml)
+
+Eye detectors that detect open eyes only are as follows:
+
+- haarcascade_eye.xml
+- haarcascade_eye_tree_eyeglasses.xml
+
+As the open or closed eye detectors specify  which eye they are trained on, you need to use a different detector for  the left and the right eye, whereas the detectors for just open eyes can use the same detector for left or right eyes.
+ The haarcascade_eye_tree_eyeglasses.xml detector can detect the eyes if the person is wearing glasses, but is not reliable if they don't wear glasses.
+ If the XML filename says *left eye*, it means the  actual left eye of the person, so in the camera image it would normally  appear on the right-hand side of the face, not on the left-hand side!
+ The list of four eye detectors mentioned is ranked in approximate order  from most reliable to least reliable, so if you know you don't need to  find people with glasses, then the first detector is probably the best  choice.
+
+# Eye search regions
+
+For eye detection, it is important to crop  the input image to just show the approximate eye region, just like doing face detection and then cropping to just a small rectangle where the  left eye should be (if you are using the left eye detector), and the  same for the right rectangle for the right eye detector.
+
+If you just do eye detection on a whole  face or whole photo, then it will be much slower and less reliable.  Different eye detectors are better suited to different regions of the  face; for example, the haarcascade_eye.xml detector works best if it only searches in a very tight region around the actual eye, whereas the haarcascade_mcs_lefteye.xml and haarcascade_lefteye_2splits.xml detect work best when there is a large region around the eye.
+
+The following table lists some good search regions of the face for  different eye detectors (when using the LBP face detector), using  relative coordinates within the detected face rectangle (EYE_SX is the eye search *x* position, EYE_SY is the eye search *y* position, EYE_SW is the eye search width, and EYE_SH is the eye search height):
+
+| **Cascade classifier**          | EYE_SX | EYE_SY | EYE_SW | EYE_SH |
+| ------------------------------- | ------ | ------ | ------ | ------ |
+| haarcascade_eye.xml             | 0.16   | 0.26   | 0.30   | 0.28   |
+| haarcascade_mcs_lefteye.xml     | 0.10   | 0.19   | 0.40   | 0.36   |
+| haarcascade_lefteye_2splits.xml | 0.12   | 0.17   | 0.37   | 0.36   |
+
+ 
+
+Here is the source code to extract the left eye and right eye regions from a detected face:
+
+```
+    int leftX = cvRound(face.cols * EYE_SX); 
+    int topY = cvRound(face.rows * EYE_SY); 
+    int widthX = cvRound(face.cols * EYE_SW); 
+    int heightY = cvRound(face.rows * EYE_SH); 
+    int rightX = cvRound(face.cols * (1.0-EYE_SX-EYE_SW)); 
+
+    Mat topLeftOfFace = faceImg(Rect(leftX, topY, widthX, heightY)); 
+    Mat topRightOfFace = faceImg(Rect(rightX, topY, widthX, heightY));
+```
+
+The following photo shows the ideal search regions for the different eye detectors, where the haarcascade_eye.xml and haarcascade_eye_tree_eyeglasses.xml files are best with the small search region, and the haarcascade_mcs_*eye.xml and haarcascade_*eye_2splits.xml files are best with larger search regions. Note that the detected face  rectangle is also shown, to give an idea of how large the eye search  regions are compared to the detected face rectangle:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/261f2f4e-3e2d-4d84-811d-0cfa7029b330.jpg)
+
+The approximate detection properties of the different eye detectors while using the eye search regions are given in the following table:
+
+| **Cascade classifier**              | **Reliability\*** | **Speed\**** | **Eyes found** | **Glasses** |
+| ----------------------------------- | ----------------- | ------------ | -------------- | ----------- |
+| haarcascade_mcs_lefteye.xml         | 80%               | 18 msec      | Open or closed | no          |
+| haarcascade_lefteye_2splits.xml     | 60%               | 7 msec       | Open or closed | no          |
+| haarcascade_eye.xml                 | 40%               | 5 msec       | Open only      | no          |
+| haarcascade_eye_tree_eyeglasses.xml | 15%               | 10 msec      | Open only      | yes         |
+
+**Reliability** values show how often both eyes will be detected after LBP frontal face  detection, when no eyeglasses are worn and both eyes are open. If the  eyes are closed, then the reliability may drop, and if eyeglasses are  worn, then both reliability and speed will drop.
+
+**Speed** values are in milliseconds for  images scaled to the size of 320 x 240 pixels on an Intel Core i7 2.2  GHz (averaged across 1,000 photos). Speed is typically much faster when  eyes are found than when eyes are not found, as it must scan the entire  image, but haarcascade_mcs_lefteye.xml is still much slower than the other eye detectors.
+
+For example, if you shrink a photo to 320 x 240 pixels, perform a  histogram equalization on it, use the LBP frontal face detector to get a face, then extract the *left eye region* and *right eye region* from the face using the haarcascade_mcs_lefteye.xml values, then perform a histogram equalization on each eye region. Then, if you use the haarcascade_mcs_lefteye.xml detector on the left eye (which is actually in the top-right of your image) and use the haarcascade_mcs_righteye.xml detector on the right eye (the top-left part of your image), each eye detector  should work in roughly 90 percent of photos with LBP-detected frontal  faces. So if you want both eyes detected, then it should work in roughly 80 percent of photos with LBP-detected frontal faces.
+
+Note that while it is recommended to shrink the camera image before detecting faces, you should detect eyes at the  full camera resolution, because eyes will obviously be much smaller than faces, so you need as much resolution as you can get.
+
+Based on the table, it seems that when  choosing an eye detector to use, you should decide whether you want to  detect closed eyes or only open eyes. And remember that you can even use one eye detector, and if it does not detect an eye, then you can try  with another one.
+ For many tasks, it is useful to detect eyes whether they are open or  closed, so if speed is not crucial, it is best to search with the mcs_*eye detector first, and if it fails, then search with the eye_2splits detector.
+ But for face recognition, a person will appear quite different if their eyes are closed, so it is best to search with the plain haarcascade_eye detector first, and if it fails, then search with the haarcascade_eye_tree_eyeglasses detector.
+
+We can use the same detectLargestObject() function we used for face detection to search for eyes, but instead of asking to shrink  the images before eye detection, we specify the full eye region width to get better eye detection. It is easy to search for the left eye using  one detector, and if it fails, then try another detector (the same for  the right eye). The eye detection is done as follows:
+
+```
+    CascadeClassifier eyeDetector1("haarcascade_eye.xml"); 
+    CascadeClassifier eyeDetector2("haarcascade_eye_tree_eyeglasses.xml"); 
+    ... 
+    Rect leftEyeRect;    // Stores the detected eye. 
+    // Search the left region using the 1st eye detector. 
+    detectLargestObject(topLeftOfFace, eyeDetector1, leftEyeRect, 
+    topLeftOfFace.cols); 
+    // If it failed, search the left region using the 2nd eye  
+    // detector. 
+    if (leftEyeRect.width <= 0) 
+      detectLargestObject(topLeftOfFace, eyeDetector2,  
+                leftEyeRect, topLeftOfFace.cols); 
+    // Get the left eye center if one of the eye detectors worked. 
+    Point leftEye = Point(-1,-1); 
+    if (leftEyeRect.width <= 0) { 
+      leftEye.x = leftEyeRect.x + leftEyeRect.width/2 + leftX; 
+      leftEye.y = leftEyeRect.y + leftEyeRect.height/2 + topY; 
+    } 
+
+    // Do the same for the right eye 
+    ... 
+
+    // Check if both eyes were detected. 
+    if (leftEye.x >= 0 && rightEye.x >= 0) { 
+      ... 
+    }
+```
+
+With the face and both eyes detected, we'll perform face preprocessing by combining the following steps:
+
+1. **Geometrical transformation and cropping**: This  process includes scaling, rotating, and translating the images so that  the eyes are aligned, followed by the removal of the forehead, chin,  ears, and background from the face image.
+2. **Separate histogram equalization for left and right sides**: This process standardizes the brightness and contrast on both the left- and right-hand sides of the face independently.
+3. **Smoothing**: This process reduces the image noise using a bilateral filter.
+4. **Elliptical mask**: The elliptical mask removes some remaining hair and background from the face image.
+
+The following photos shows the face preprocessing *Step 1* to *Step 4* applied to a detected face. Notice how the final photo has good  brightness and contrast on both sides of the face, whereas the original  does not:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/35c59dca-5b35-4b1d-a30e-78214fcfe201.png)
+
+# Geometrical transformation
+
+It is important that the faces are all  aligned together, otherwise the face recognition algorithm might be  comparing part of a nose with part of an eye, and so on. The output of  the face detection we've just seen will give aligned faces to some  extent, but it is not very accurate (that is, the face rectangle will  not always be starting from the same point on the forehead).
+
+To have better alignment, we will use eye detection to  align the face, so the positions of the two detected eyes line up  perfectly in the desired positions. We will do the geometrical  transformation using the warpAffine() function, which is a single operation that will do the following four things:
+
+- Rotate the face so that the two eyes are horizontal
+- Scale the face so that the distance between the two eyes is always the same
+- Translate the face so that the eyes are always centered horizontally, and at the desired height
+- Crop the outer parts of the face, since we want to crop away the image background, hair, forehead, ears, and chin
+
+Affine warping takes an affine matrix that transforms the two  detected eye locations into the two desired eye locations, and then  crops to a desired size and position. To generate this affine matrix, we will get the center between the eyes, calculate the angle at which the  two detected eyes appear, and look at their distance apart, as follows:
+
+```
+    // Get the center between the 2 eyes. 
+    Point2f eyesCenter; 
+    eyesCenter.x = (leftEye.x + rightEye.x) * 0.5f; 
+    eyesCenter.y = (leftEye.y + rightEye.y) * 0.5f; 
+
+    // Get the angle between the 2 eyes. 
+    double dy = (rightEye.y - leftEye.y); 
+    double dx = (rightEye.x - leftEye.x); 
+    double len = sqrt(dx*dx + dy*dy); 
+
+    // Convert Radians to Degrees. 
+    double angle = atan2(dy, dx) * 180.0/CV_PI; 
+
+    // Hand measurements shown that the left eye center should  
+    // ideally be roughly at (0.16, 0.14) of a scaled face image. 
+    const double DESIRED_LEFT_EYE_X = 0.16; 
+    const double DESIRED_RIGHT_EYE_X = (1.0f - 0.16); 
+
+    // Get the amount we need to scale the image to be the desired 
+    // fixed size we want. 
+    const int DESIRED_FACE_WIDTH = 70; 
+    const int DESIRED_FACE_HEIGHT = 70; 
+    double desiredLen = (DESIRED_RIGHT_EYE_X - 0.16); 
+    double scale = desiredLen * DESIRED_FACE_WIDTH / len;
+```
+
+Now, we can transform the face (rotate,  scale, and translate) to get the two detected eyes to be in the desired  eye positions in an ideal face, as follows:
+
+```
+    // Get the transformation matrix for the desired angle & size. 
+    Mat rot_mat = getRotationMatrix2D(eyesCenter, angle, scale); 
+    // Shift the center of the eyes to be the desired center. 
+    double ex = DESIRED_FACE_WIDTH * 0.5f - eyesCenter.x; 
+    double ey = DESIRED_FACE_HEIGHT * DESIRED_LEFT_EYE_Y -  
+      eyesCenter.y; 
+    rot_mat.at<double>(0, 2) += ex; 
+    rot_mat.at<double>(1, 2) += ey; 
+    // Transform the face image to the desired angle & size & 
+    // position! Also clear the transformed image background to a  
+    // default grey. 
+    Mat warped = Mat(DESIRED_FACE_HEIGHT, DESIRED_FACE_WIDTH, 
+      CV_8U, Scalar(128)); 
+    warpAffine(gray, warped, rot_mat, warped.size());
+```
+
+# Separate histogram equalization for left and right sides
+
+In real-world conditions, it is common to  have strong lighting on one half of the face and weak lighting on the  other. This has an enormous effect on the face recognition algorithm, as the left- and right-hand sides of the same face will seem like very  different people. So, we will perform histogram equalization separately  on the left and right halves of the face, to have a standardized  brightness and contrast on each side of the face.
+
+If we simply applied histogram equalization on the left half and then again on the right half, we would see a very distinct edge in the  middle because the average brightness is likely to be different on the  left and the right side. So to remove this edge, we will apply the two  histogram equalizations gradually from the left or right-hand side  toward the center, and mix it with a whole face histogram equalization.
+
+Then, the far left-hand side will use the left histogram  equalization, the far right-hand side will use the right histogram  equalization, and the center will use a smooth mix of the left and right values and the whole face equalized value.
+
+The following screenshot shows how the left-equalized, whole-equalized, and right-equalized images are blended together:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c26e678c-7c37-4798-9d0c-1ece2b9a1338.png)
+
+To perform this, we need copies of the  whole face equalized, as well as the left half equalized and the right  half equalized, which is done as follows:
+
+```
+    int w = faceImg.cols; 
+    int h = faceImg.rows; 
+    Mat wholeFace; 
+    equalizeHist(faceImg, wholeFace); 
+    int midX = w/2; 
+    Mat leftSide = faceImg(Rect(0,0, midX,h)); 
+    Mat rightSide = faceImg(Rect(midX,0, w-midX,h)); 
+    equalizeHist(leftSide, leftSide); 
+    equalizeHist(rightSide, rightSide);
+```
+
+Now, we combine the three images together. As the images are small, we can easily access the pixels directly using the image.at<uchar>(y,x) function, even if it is slow; so let's merge the three images by directly  accessing pixels in the three input images and output images, as  follows:
+
+```
+    for (int y=0; y<h; y++) { 
+      for (int x=0; x<w; x++) { 
+        int v; 
+        if (x < w/4) { 
+          // Left 25%: just use the left face. 
+          v = leftSide.at<uchar>(y,x); 
+        } 
+        else if (x < w*2/4) { 
+          // Mid-left 25%: blend the left face & whole face. 
+          int lv = leftSide.at<uchar>(y,x); 
+          int wv = wholeFace.at<uchar>(y,x); 
+          // Blend more of the whole face as it moves 
+          // further right along the face. 
+          float f = (x - w*1/4) / (float)(w/4); 
+          v = cvRound((1.0f - f) * lv + (f) * wv); 
+        } 
+        else if (x < w*3/4) { 
+          // Mid-right 25%: blend right face & whole face. 
+          int rv = rightSide.at<uchar>(y,x-midX); 
+          int wv = wholeFace.at<uchar>(y,x); 
+          // Blend more of the right-side face as it moves 
+          // further right along the face. 
+          float f = (x - w*2/4) / (float)(w/4); 
+          v = cvRound((1.0f - f) * wv + (f) * rv); 
+        } 
+        else { 
+          // Right 25%: just use the right face. 
+          v = rightSide.at<uchar>(y,x-midX); 
+        } 
+        faceImg.at<uchar>(y,x) = v; 
+      } // end x loop 
+    } //end y loop
+```
+
+This separated histogram equalization should significantly help  reduce the effect of different lighting on the left- and right-hand  sides of the face, but we must understand that it won't completely  remove the effect of one-sided lighting, since the face is a complex 3D  shape with many shadows.
+
+# Smoothing
+
+To reduce the effect of pixel noise, we  will use a bilateral filter on the face, as a bilateral filter is very  good at smoothing most of an image while keeping edges sharp. Histogram  equalization can significantly increase the pixel noise, so we will make the filter strength 20.0 to cover  heavy pixel noise, and use a neighborhood of just two pixels as we want  to heavily smooth the tiny pixel noise, but not the large image regions, as follows:
+
+```c++
+    Mat filtered = Mat(warped.size(), CV_8U); 
+    bilateralFilter(warped, filtered, 0, 20.0, 2.0);
+```
+
+# Elliptical mask
+
+Although we have already removed most of  the image background, forehead, and hair when we did the geometrical  transformation, we can apply an elliptical mask to remove some of the  corner regions, such as the neck, which might be in shadow from the  face, particularly if the face is not looking perfectly straight toward  the camera. To create the mask, we will draw a black-filled ellipse onto a white image. One ellipse to perform this has a horizontal radius of  0.5 (that is, it covers the face width perfectly), a vertical radius of  0.8 (as faces are usually taller than they are wide), and centered at  the coordinates 0.5, 0.4, as shown in the following screenshot, where  the elliptical mask has removed some unwanted corners from the face:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e09c5c07-f0f8-4afd-b187-bc2f0847cb85.png)
+
+We can apply the mask when calling the cv::setTo() function, which would normally set a whole image to a certain pixel value, but as we will give a mask image, it will only set some parts to the given  pixel value. We will fill the image in with gray so that it should have  less contrast to the rest of the face, as follows:
+
+```
+    // Draw a black-filled ellipse in the middle of the image. 
+    // First we initialize the mask image to white (255). 
+    Mat mask = Mat(warped.size(), CV_8UC1, Scalar(255)); 
+    double dw = DESIRED_FACE_WIDTH; 
+    double dh = DESIRED_FACE_HEIGHT; 
+    Point faceCenter = Point( cvRound(dw * 0.5), 
+      cvRound(dh * 0.4) ); 
+    Size size = Size( cvRound(dw * 0.5), cvRound(dh * 0.8) ); 
+    ellipse(mask, faceCenter, size, 0, 0, 360, Scalar(0),  
+      CV_FILLED); 
+
+    // Apply the elliptical mask on the face, to remove corners. 
+    // Sets corners to gray, without touching the inner face. 
+    filtered.setTo(Scalar(128), mask);
+```
+
+The following enlarged screenshot shows a  sample result from all the face preprocessing stages. Notice it is much  more consistent for face recognition at different brightness, face  rotations, angles from camera, backgrounds, positions of lights, and so  on. This preprocessed face will be used as input to the face recognition stages, both when collecting faces for training and when trying to  recognize input faces:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/82e8577a-990f-4cfd-a6ea-654e04bc519e.png)
+
+# Collecting faces and learning from them
+
+Collecting faces can be just as simple as putting each newly preprocessed face into an array of preprocessed faces from the camera, as well as putting a  label into an array (to specify which person the face was taken from).  For example, you could use 10 preprocessed faces of the first person and 10 preprocessed faces of a second person, so the input to the face  recognition algorithm will be an array of 20 preprocessed faces, and an  array of 20 integers (where the first 10 numbers are 0 and the next 10  numbers are 1).
+
+The face recognition algorithm will then learn how to distinguish  between the faces of the different people. This is referred to as the  training phase, and the collected faces are referred to as the training  set. After the face recognition algorithm has finished training, you can then save the generated knowledge to a file or memory and later use it  to recognize which person is seen in front of the camera. This is  referred to as the testing phase. If you used it directly from a camera  input, then the preprocessed face would be referred to as the test  image, and if you tested with many images (such as from a folder of  image files), it would be referred to as the testing set.
+
+It is important that you provide a good training set that covers the types of variations you expect to occur in your testing set. For example, if you will only test with  faces that are looking perfectly straight ahead (such as ID photos),  then you only need to provide training images with faces that are  looking perfectly straight ahead. But if the person might be looking to  the left, or up, then you should make sure the training set also  includes faces of that person doing this, otherwise the face recognition algorithm will have trouble recognizing them, as their face will appear quite different. This also applies to other factors, such as facial  expression (for example, if the person is always smiling in the training set, but not smiling in the testing set) or lighting direction (for  example, a strong light is to the left-hand side in the training set but to the right-hand side in the testing set), then the face recognition  algorithm will have difficulty recognizing them. The face preprocessing  steps that we just saw will help reduce these issues, but it certainly  won't remove these factors, particularly the direction that the face is  looking, as it has a large effect on the position of all elements in the face.
+
+One way to obtain a good training set that  will cover many different real-world conditions is for each person to  rotate their head from looking left, to up, to right, to down, then  looking directly straight. Then, the person tilts their head sideways  and then up and down, while also changing their facial expression, such  as alternating between smiling, looking angry, and having a neutral  face. If each person follows a routine such as this while collecting  faces, then there is a much better chance of recognizing everyone in  real-world conditions.
+ For even better results, it should be performed again with one or two  more locations or directions, such as by turning the camera around 180  degrees, walking in the opposite direction, and then repeating the whole routine, so that the training set would include many different lighting conditions.
+
+So, in general, having 100 training faces for each person is likely  to give better results than having just 10 training faces for each  person, but if all 100 faces look almost identical, then it will still  perform badly, because it is more important that the training set has  enough variety to cover the testing set, rather than to just have a  large number of faces. So, to make sure the faces in the training set  are not all too similar, we should add a noticeable delay between each  collected face. For example, if the camera is running at 30 frames per  second, then it might collect 100 faces in just several seconds when the person has not had time to move around, so it is better to collect just one face per second while the person moves their face around. Another  simple method to improve the variation in the training set is to only  collect a face if it is noticeably different from the previously  collected face.
+
+# Collecting preprocessed faces for training
+
+To make sure there is at least a one-second gap between collecting new faces, we need to measure how much time has passed. This is done as follows:
+
+```
+    // Check how long since the previous face was added. 
+    double current_time = (double)getTickCount(); 
+    double timeDiff_seconds = (current_time - 
+      old_time) / getTickFrequency();
+```
+
+To compare the similarity of two images, pixel by pixel, you can find the relative L2 error, which just involves subtracting one image from  the other, summing the squared value of it, and then getting the square  root of it. So if the person had not moved at all, subtracting the  current face from the previous face should give a very low number at  each pixel, but if they had just moved slightly in any direction,  subtracting the pixels would give a large number and so the L2 error  will be high. As the result is summed over all pixels, the value will  depend on the image resolution. So to get the mean error, we should  divide this value by the total number of pixels in the image. Let's put  this in a handy function, getSimilarity(), as follows:
+
+```
+    double getSimilarity(const Mat A, const Mat B) { 
+      // Calculate the L2 relative error between the 2 images. 
+      double errorL2 = norm(A, B, CV_L2); 
+      // Scale the value since L2 is summed across all pixels. 
+      double similarity = errorL2 / (double)(A.rows * A.cols); 
+      return similarity; 
+    } 
+
+    ... 
+
+    // Check if this face looks different from the previous face. 
+    double imageDiff = MAX_DBL; 
+    if (old_prepreprocessedFaceprepreprocessedFace.data) { 
+      imageDiff = getSimilarity(preprocessedFace, 
+        old_prepreprocessedFace); 
+    }
+```
+
+This similarity will often be less than 0.2 if the image did not move much, and higher than 0.4 if the image did move, so let's use 0.3 as  our threshold for collecting a new face.
+
+There are many tricks we can perform to obtain more training data,  such as using mirrored faces, adding random noise, shifting the face by a few pixels, scaling the face by a percentage, or rotating the face by a few degrees (even though we specifically tried to remove these effects  when preprocessing the face!). Let's add mirrored faces to the training  set, so that we have both a larger training set and a reduction in the  problems of asymmetrical faces, or if a user is always oriented slightly to the left or right during training but not testing. This is done as  follows:
+
+```
+    // Only process the face if it's noticeably different from the 
+    // previous frame and there has been a noticeable time gap. 
+    if ((imageDiff > 0.3) && (timeDiff_seconds > 1.0)) { 
+      // Also add the mirror image to the training set. 
+      Mat mirroredFace; 
+      flip(preprocessedFace, mirroredFace, 1); 
+
+      // Add the face & mirrored face to the detected face lists. 
+      preprocessedFaces.push_back(preprocessedFace); 
+      preprocessedFaces.push_back(mirroredFace); 
+      faceLabels.push_back(m_selectedPerson); 
+      faceLabels.push_back(m_selectedPerson); 
+
+      // Keep a copy of the processed face, 
+      // to compare on next iteration. 
+      old_prepreprocessedFace = preprocessedFace; 
+      old_time = current_time; 
+    }
+```
+
+This will collect the std::vector arrays, preprocessedFaces, and faceLabels for a preprocessed face, as well as the label or ID number of that person (assuming it is in the integer m_selectedPerson variable).
+
+To make it more obvious to the user that we have added their current face to the collection, you could provide a  visual notification by either displaying a large white rectangle over  the whole image, or just displaying their face for just a fraction of a  second so they realize a photo was taken. With OpenCV's C++ interface,  you can use the + overloaded cv::Mat operator to add a value to every pixel in the image and have it clipped to 255 (using saturate_cast, so it doesn't overflow from white back to black!). Assuming displayedFrame will be a copy of the color camera frame that should be shown, insert this after the preceding code for face collection:
+
+```c++
+    // Get access to the face region-of-interest. 
+    Mat displayedFaceRegion = displayedFrame(faceRect); 
+    // Add some brightness to each pixel of the face region. 
+    displayedFaceRegion += CV_RGB(90,90,90);
+```
+
+# Training the face recognition system from collected faces
+
+After you have collected enough faces for each person to recognize, you must train the system to learn the data using a  machine learning algorithm suited for face recognition. There are many  different face recognition algorithms in the literature, the simplest of which are Eigenfaces and artificial neural networks. Eigenfaces tends  to work better than ANNs, and despite its simplicity, it tends to work  almost as well as many more complex face recognition algorithms, so it  has become very popular as the basic face recognition algorithm for  beginners, as well as for new algorithms to be compared to.
+
+Any reader who wishes to work further on face recognition is recommended to read the theory behind the following:
+
+- Eigenfaces (also referred to as **principal component analysis** (**PCA**)
+- Fisherfaces (also referred to as **linear discriminant analysis** (**LDA**)
+- Other classic face recognition algorithms (many are available at [http://www.facerec.org/algorithms/](http://www.face-rec.org/algorithms/))
+- Newer face recognition algorithms in recent computer vision research papers (such as CVPR and ICCV at http://www.cvpapers.com/), as there are hundreds of face recognition papers published each year
+
+However, you don't need to understand the theory of these algorithms  in order to use them as shown in this book. Thanks to the OpenCV team  and Philipp Wagner's libfacerec contribution, OpenCV v2.4.1 provided cv::Algorithm as a simple and generic method to perform face recognition using one of  several different algorithms (even selectable at runtime) without  necessarily understanding how they are implemented. You can find the  available algorithms in your version of OpenCV by using the Algorithm::getList() function, such as with the following code:
+
+```
+    vector<string> algorithms; 
+    Algorithm::getList(algorithms); 
+    cout << "Algorithms: " << algorithms.size() << endl; 
+    for (auto& algorithm:algorithms) { 
+      cout << algorithm << endl; 
+    }
+```
+
+Here are the three face recognition algorithms available in OpenCV v2.4.1:
+
+- FaceRecognizer.Eigenfaces: Eigenfaces, also referred to as PCA, first used by Turk and Pentland in 1991
+- FaceRecognizer.Fisherfaces: Fisherfaces, also referred to as LDA, invented by Belhumeur, Hespanha, and Kriegman in 1997
+- FaceRecognizer.LBPH: Local Binary Pattern Histograms, invented by Ahonen, Hadid, and Pietikäinen in 2004
+
+More information on these face recognition  algorithm implementations can be found with documentation, samples, and  Python equivalents for each of them on Philipp Wagner's websites (http://bytefish.de/blog and http://bytefish.de/dev/libfacerec/).
+
+These face recognition-algorithms are available through the FaceRecognizer class in OpenCV's contrib module. Due to dynamic linking, it is possible that your program is linked to the contrib module, but it is not actually loaded at runtime (if it was deemed as not required). So it is recommended to call the cv::initModule_contrib() function before trying to access the FaceRecognizer algorithms. This function is only available from OpenCV v2.4.1, so it also ensures  that the face recognition algorithms are at least available to you at  compile time:
+
+```
+    // Load the "contrib" module is dynamically at runtime. 
+    bool haveContribModule = initModule_contrib(); 
+    if (!haveContribModule) { 
+      cerr << "ERROR: The 'contrib' module is needed for "; 
+      cerr << "FaceRecognizer but hasn't been loaded to OpenCV!"; 
+      cerr << endl; 
+      exit(1); 
+    }
+```
+
+To use one of the face recognition algorithms, we must create a FaceRecognizer object using the cv::Algorithm::create<FaceRecognizer>() function. We pass the name of the face recognition algorithm we want to use as a string to this create function. This will give us access to that algorithm, if it is  available in the OpenCV version. So, it may be used as a runtime error  check to ensure the user has OpenCV v2.4.1 or newer. An example of this  is shown as follows:
+
+```
+    string facerecAlgorithm = "FaceRecognizer.Fisherfaces"; 
+    Ptr<FaceRecognizer> model; 
+    // Use OpenCV's new FaceRecognizer in the "contrib" module: 
+    model = Algorithm::create<FaceRecognizer>(facerecAlgorithm); 
+    if (model.empty()) { 
+      cerr << "ERROR: The FaceRecognizer [" << facerecAlgorithm; 
+      cerr << "] is not available in your version of OpenCV. "; 
+      cerr << "Please update to OpenCV v2.4.1 or newer." << endl; 
+      exit(1); 
+    }
+```
+
+Once we have loaded the FaceRecognizer algorithm, we simply call the FaceRecognizer::train() function with our collected face data, as follows:
+
+```
+// Do the actual training from the collected faces. 
+model->train(preprocessedFaces, faceLabels);
+```
+
+This one line of code will run the whole face  recognition training algorithm that you selected (for example,  Eigenfaces, Fisherfaces, or potentially other algorithms). If you have  just a few people with less than 20 faces, then this training should  return very quickly, but if you have many people with many faces, it is  possible that the train() function will take several seconds, or even minutes, to process all the data. 
+
+# Viewing the learned knowledge
+
+While it is not necessary, it is quite useful to view the internal  data structures that the face recognition algorithm generated when  learning your training data, particularly if you understand the theory  behind the algorithm you selected and want to verify it worked, or find  out why it is not working as you hoped. The internal data structures can be different for different algorithms, but luckily they are the same  for Eigenfaces and Fisherfaces, so let's just look at those two. They  are both based on 1D eigenvector matrices that appear somewhat like  faces when viewed as 2D images; therefore, it is common to refer to  eigenvectors as Eigenfaces when using the **Eigenface** algorithm or as Fisherfaces when using the **Fisherface** algorithm.
+
+In simple terms, the basic principle of Eigenfaces is that it will calculate a set of special images (Eigenfaces), and blending ratios (Eigenvalues), which when combined in different ways, can generate each of the images in the training set, but can also be used to differentiate the many face images in the  training set from each other. For example, if some of the faces in the  training set had a moustache and some did not, then there would be at  least one eigenface that shows a moustache, and so the training faces  with a moustache would have a high blending ratio for that eigenface to  show that they contained a moustache, and the faces without a moustache  would have a low blending ratio for that eigenvector.
+
+If the training set has five people with twenty faces for each  person, then there would be 100 Eigenfaces and Eigenvalues to  differentiate the 100 total faces in the training set, and in fact these would be sorted, so the first few Eigenfaces and Eigenvalues would be  the most critical differentiators, and the last few Eigenfaces and  Eigenvalues would just be random pixel noises that don't actually help  to differentiate the data. So it is common practice to discard some of  the last Eigenfaces, and just keep the first 50 or so Eigenfaces.
+
+In comparison, the basic principle of Fisherfaces is that instead of  calculating a special eigenvector and eigenvalue for each image in the  training set, it only calculates one special eigenvector and eigenvalue  for each person. So, in the preceding example that has five people with  twenty faces for each person, the Eigenfaces algorithm would use 100  Eigenfaces and Eigenvalues, whereas the Fisherfaces algorithm would use  just five Fisherfaces and Eigenvalues.
+
+To access the internal data structures of the Eigenfaces and Fisherfaces algorithms, we must use the cv::Algorithm::get() function to obtain them at runtime, as there is no access to them at compile  time. The data structures are used internally as part of mathematical  calculations, rather than for image processing, so they are usually  stored as floating-point numbers typically ranging between 0.0 and 1.0,  rather than 8-bit uchar pixels ranging from 0 to 255, similar to pixels in regular images. Also, they are often either a 1D  row or column matrix, or they make up one of the many 1D rows or columns of a larger matrix. So, before you can display many of these internal  data structures, you must reshape them to be the correct rectangular  shape, and convert them to 8-bit uchar pixels between 0 and 255. As the matrix data might range from 0.0 to 1.0, or -1.0 to 1.0, or anything else, you can use the cv::normalize() function with the cv::NORM_MINMAX option to make sure it outputs data ranging between 0 and 255, no matter what  the input range may be. Let's create a function to perform this  reshaping to a rectangle and conversion to 8-bit pixels for us, as  follows:
+
+```
+    // Convert the matrix row or column (float matrix) to a 
+    // rectangular 8-bit image that can be displayed or saved. 
+    // Scales the values to be between 0 to 255. 
+    Mat getImageFrom1DFloatMat(const Mat matrixRow, int height) 
+    { 
+      // Make a rectangular shaped image instead of a single row. 
+      Mat rectangularMat = matrixRow.reshape(1, height); 
+      // Scale the values to be between 0 to 255 and store them  
+      // as a regular 8-bit uchar image. 
+      Mat dst; 
+      normalize(rectangularMat, dst, 0, 255, NORM_MINMAX,  
+        CV_8UC1); 
+      return dst; 
+    }
+```
+
+To make it easier to debug OpenCV code and even more so, when internally debugging the cv::Algorithm data structure, we can use the ImageUtils.cpp and ImageUtils.h files to display information about a cv::Mat structure easily, as follows:
+
+```
+    Mat img = ...; 
+    printMatInfo(img, "My Image");
+```
+
+You will see something similar to the following printed on your console:
+
+```
+My Image: 640w480h 3ch 8bpp, range[79,253][20,58][18,87]
+```
+
+This tells you that it is 640 elements wide and 480 high (that is, a  640 x 480 image or a 480 x 640 matrix, depending on how you view it),  with three channels per pixel that are 8-bits each (that is, a regular  BGR image), and it shows the minimum and maximum values in the image for each of the color channels.
+
+It is also possible to print the actual contents of an image or matrix by using the printMat() function instead of the printMatInfo() function. This is quite handy for viewing matrices and multichannel-float  matrices, as these can be quite tricky to view for beginners.
+ The ImageUtils code is mostly for  OpenCV's C interface, but is gradually including more of the C++  interface over time. The most recent version can be found at http://shervinemami.info/openCV.html.
+
+
+
+# Average face
+
+Both the Eigenfaces and Fisherfaces algorithms first calculate the  average face that is the mathematical average of all the training  images, so they can subtract the average image from each facial image to have better face recognition results. So, let's view the average face  from our training set. The average face is named mean in the Eigenfaces and Fisherfaces implementations, shown as follows:
+
+```
+    Mat averageFace = model->get<Mat>("mean"); 
+    printMatInfo(averageFace, "averageFace (row)"); 
+    // Convert a 1D float row matrix to a regular 8-bit image. 
+    averageFace = getImageFrom1DFloatMat(averageFace, faceHeight); 
+    printMatInfo(averageFace, "averageFace"); 
+    imshow("averageFace", averageFace);
+```
+
+You should now see an average face image on your screen similar to  the following (enlarged) photo, which is a combination of a man, a  woman, and a baby. You should also see similar text to this shown on  your console:
+
+```
+    averageFace (row): 4900w1h 1ch 64bpp, range[5.21,251.47]
+    averageFace: 70w70h 1ch 8bpp, range[0,255]
+```
+
+The image will appear as shown in the following screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a29cd8eb-e98f-49cd-be8c-2156117d6fd0.png)
+
+Notice that averageFace (row) was a single-row matrix of 64-bit floats, whereas averageFace is a rectangular image with 8-bit pixels, covering the full range
+ from 0 to 255.
+
+# Eigenvalues, Eigenfaces, and Fisherfaces
+
+Let's view the actual component values in the Eigenvalues (as text), shown as follows:
+
+```
+    Mat eigenvalues = model->get<Mat>("eigenvalues"); 
+    printMat(eigenvalues, "eigenvalues");
+```
+
+For Eigenfaces, there is one Eigenvalue for each face, so if we have three people with four faces each, we get a column vector with 12 Eigenvalues sorted from best to worst as follows:
+
+```
+    eigenvalues: 1w18h 1ch 64bpp, range[4.52e+04,2.02836e+06] 
+    2.03e+06  
+    1.09e+06 
+    5.23e+05 
+    4.04e+05 
+    2.66e+05 
+    2.31e+05 
+    1.85e+05 
+    1.23e+05 
+    9.18e+04 
+    7.61e+04  
+    6.91e+04 
+    4.52e+04
+```
+
+For Fisherfaces, there is just one eigenvalue for each extra person,  so if there are three people with four faces each, we just get a row  vector with two Eigenvalues as follows:
+
+```
+    eigenvalues: 2w1h 1ch 64bpp, range[152.4,316.6] 
+    317, 152
+```
+
+To view the eigenvectors (as Eigenface or Fisherface images), we must extract them as columns from the big eigenvector matrix. As data in  OpenCV and C/C++ is normally stored in matrices using row-major order,  it means that to extract a column, we should use the Mat::clone() function to ensure the data will be continuous, otherwise we can't reshape the  data into a rectangle. Once we have a continuous column, Mat, we can display the eigenvectors using the getImageFrom1DFloatMat() function just like we did for the average face:
+
+```
+   // Get the eigenvectors 
+    Mat eigenvectors = model->get<Mat>("eigenvectors"); 
+    printMatInfo(eigenvectors, "eigenvectors"); 
+
+    // Show the best 20 Eigenfaces 
+    for (int i = 0; i < min(20, eigenvectors.cols); i++) { 
+      // Create a continuous column vector from eigenvector #i. 
+      Mat eigenvector = eigenvectors.col(i).clone(); 
+
+      Mat eigenface = getImageFrom1DFloatMat(eigenvector, 
+        faceHeight); 
+      imshow(format("Eigenface%d", i), eigenface); 
+    }
+```
+
+The following screenshot displays eigenvectors as  images. You can see that for three people with four faces, there are 12  Eigenfaces (left-hand side of the screenshot), or two Fisherfaces  (right-hand side of the screenshot):
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/de00d62f-29c7-477f-9960-9657a942e067.png)
+
+Notice that both Eigenfaces and Fisherfaces seem to have a  resemblance to some facial features, but they don't really look like  faces. This is simply because the average face was subtracted from them, so they just show the differences for each Eigenface from the average  face. The numbering shows which Eigenface it is, because they are always ordered from the most significant Eigenface to the least significant  Eigenface, and if you have 50 or more Eigenfaces, then the later  Eigenfaces will often just show random image noise and therefore should  be discarded.
+
+# Face recognition
+
+Now that we have trained the Eigenfaces or  Fisherfaces machine learning algorithm with our set of training images  and face labels, we are finally ready to figure out who a person is,  just from a facial image! This last step is referred to as face  recognition or face identification.
+
+# Face identification – recognizing people from their faces
+
+Thanks to OpenCV's FaceRecognizer class, we can identify the person in a photo simply by calling the FaceRecognizer::predict() function on a facial image
+ as follows:
+
+```
+    int identity = model->predict(preprocessedFace);
+```
+
+This identity value will be the label number that we originally used when collecting faces for training, for example, zero for the first person, one for the second person, and so on.
+
+The problem with this identification is that it will always predict  one of the given people, even if the input photo is of an unknown  person, or of a car. It would still tell you which person is the most  likely person in that photo, so it can be difficult to trust the result! The solution is to obtain a confidence metric so we can judge how  reliable the result is, and if it seems that the confidence is too low,  then we assume it is an unknown person.
+
+# Face verification—validating that it is the claimed person
+
+To confirm whether the result of the prediction is reliable or it should be taken as an unknown person, we perform **face verification** (also referred to as **face authentication**) to obtain a confidence metric showing whether the single face image is similar to the claimed person (as opposed to face  identification, which we just performed, comparing the single face image with many people).
+
+OpenCV's FaceRecognizer class can return a confidence metric when you call the predict() function, but unfortunately the confidence metric is simply based on the distance in eigen-subspace, so it is not very reliable. The method we will use  is to reconstruct the facial image using the *eigenvectors* and Eigenvalues, and compare this reconstructed image with the input image. If the  person had many of their faces included in the training set, then the  reconstruction should work quite well from the learned eigenvectors and  Eigenvalues, but if the person did not have any faces in the training  set (or did not have any that have similar lighting and facial  expressions to the test image), then the reconstructed face will look  very different from the input face, signaling that it is probably an  unknown face.
+
+Remember we said earlier that the Eigenfaces and Fisherfaces  algorithms are based on the notion that an image can be roughly  represented as a set of eigenvectors (special face images) and  Eigenvalues (blending ratios). So if we combine all the eigenvectors  with the Eigenvalues from one of the faces in the training set, then we  should obtain a fairly close replica of that original training image.  The same applies with other images that are similar to the training set; if we combine the trained eigenvectors with the Eigenvalues from a  similar test image, we should be able to reconstruct an image that is  somewhat a replica of the test image.
+
+Once again, OpenCV's FaceRecognizer class makes it quite easy to generate a reconstructed face from any input image, by using the subspaceProject() function to project onto the eigenspace and the subspaceReconstruct() function to go back from the eigenspace to the image space. The trick is that we need to convert it from a floating-point row matrix to a rectangular  8-bit image (like we did when displaying the average face and  Eigenfaces), but we don't want to normalize the data, as it is already  in the ideal scale to compare with the original image. If we normalized  the data, it would have a different brightness and contrast from the  input image, and it would become difficult to compare the image  similarity just by using the L2 relative error. This is done as follows:
+
+```
+    // Get some required data from the FaceRecognizer model. 
+    Mat eigenvectors = model->get<Mat>("eigenvectors"); 
+    Mat averageFaceRow = model->get<Mat>("mean"); 
+
+    // Project the input image onto the eigenspace. 
+    Mat projection = subspaceProject(eigenvectors, averageFaceRow, 
+      preprocessedFace.reshape(1,1)); 
+
+    // Generate the reconstructed face back from the eigenspace. 
+    Mat reconstructionRow = subspaceReconstruct(eigenvectors, 
+      averageFaceRow, projection); 
+
+    // Make it a rectangular shaped image instead of a single row. 
+    Mat reconstructionMat = reconstructionRow.reshape(1,  
+      faceHeight); 
+
+    // Convert the floating-point pixels to regular 8-bit uchar. 
+    Mat reconstructedFace = Mat(reconstructionMat.size(), CV_8U); 
+    reconstructionMat.convertTo(reconstructedFace, CV_8U, 1, 0);
+```
+
+The following screenshot shows two typical reconstructed faces. The  face on the left-hand side was reconstructed well because it was from a  known person, whereas the face on the right-hand side was reconstructed  badly because it was from an unknown person, or a known person but with  unknown lighting conditions/facial expression/face direction:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/754b8988-4634-45b6-9a99-901f110a643c.png)
+
+We can now calculate how similar this reconstructed face is to the input face by using the getSimilarity() function we created previously for comparing two images, where a value less than 0.3 implies that the two images are very similar. For Eigenfaces, there is one eigenvector for each face, so reconstruction tends to work well, and therefore we can typically use a threshold of 0.5, but Fisherfaces  has just one eigenvector for each person, so reconstruction will not  work as well, and therefore it needs a higher threshold, say 0.7. This  is done as follows:
+
+```
+    similarity = getSimilarity(preprocessedFace, reconstructedFace); 
+    if (similarity > UNKNOWN_PERSON_THRESHOLD) { 
+      identity = -1;    // Unknown person. 
+    }
+```
+
+Now, you can just print the identity to the console, or use it  wherever your imagination takes you! Remember that this face recognition method and this face verification method are only reliable in the  conditions that you train them for. So to obtain good recognition  accuracy, you will need to ensure that the training set of each person  covers the full range of lighting conditions, facial expressions, and  angles that you expect to test with. The face preprocessing stage helped reduce some differences with lighting conditions and in-plane rotation  (if the person tilts their head toward their left or right shoulder),  but for other differences, such as out-of-plane rotation (if the person  turns their head toward the left-hand side or right-hand side), it will  only work if it is covered well in your training set.
+
+# Finishing touches—saving and loading files
+
+You could potentially add a command-line-based method that processes  input files and saves them to disk, or even perform face detection, face preprocessing, and/or face recognition as a web service. For these  types of projects, it is quite easy to add the desired functionality by  using the save and load functions of the FaceRecognizer class. You may also want to save the trained data, and then load it on program startup.
+
+Saving the trained model to an XML or YML file is very easy, and is shown as follows:
+
+```
+model->save("trainedModel.yml");
+```
+
+You may also want to save the array of preprocessed faces and labels, if you want to add more data to the training set later.
+
+For example, here is some sample code for loading the trained model  from a file. Note that you must specify the face recognition algorithm  (for example, FaceRecognizer.Eigenfaces or FaceRecognizer.Fisherfaces) that was originally used to create the trained model:
+
+```
+    string facerecAlgorithm = "FaceRecognizer.Fisherfaces"; 
+    model = Algorithm::create<FaceRecognizer>(facerecAlgorithm); 
+    Mat labels; 
+    try { 
+      model->load("trainedModel.yml"); 
+      labels = model->get<Mat>("labels"); 
+    } catch (cv::Exception &e) {} 
+    if (labels.rows <= 0) { 
+      cerr << "ERROR: Couldn't load trained data from " 
+              "[trainedModel.yml]!" << endl; 
+      exit(1); 
+    }
+```
+
+# Finishing touches—making a nice and interactive GUI
+
+While the code given so far in this chapter is sufficient for a whole face recognition system, there still needs to be a way to put the data  into the system and a way to use it. Many face recognition systems for  research will choose the ideal input to be text files, listing where the static image files are stored on the computer, as well as other  important data, such as the true name or identity of the person, and  perhaps true pixel coordinates of regions of the face (such as the  ground truth of where the face and eye centers actually are). This would either be collected manually or by another face recognition system.
+
+The ideal output would then be a text file comparing the recognition  results with the ground truth, so that statistics may be obtained for  comparing the face recognition system with other face recognition  systems.
+
+However, as the face recognition system in this chapter is designed  for learning as well as practical fun purposes, rather than competing  with the latest research methods, it is useful to have an easy-to-use  GUI that allows face collection, training, and testing interactively  from the webcam in real time. So this section will show you an  interactive GUI that provides these features. The reader is expected to  either use the GUI that comes with this book, or modify it for their own purposes, or ignore this GUI and design their own to perform the face  recognition techniques discussed so far.
+
+As we need the GUI to perform multiple tasks, let's create a set of  modes or states that the GUI will have, with buttons or mouse clicks for the user to change modes:
+
+- **Startup**: This state loads and initializes the data and webcam.
+- **Detection**: This state detects faces and shows them with preprocessing, until the user clicks on the Add Person button.
+- **Collection**: This state collects faces for the  current person, until the user clicks anywhere in the window. This also  shows the most recent face of each person. The user clicks either one of the existing people or the Add Person button to collect faces for different people.
+- **Training**: In this state, the system is trained with the help of all the collected faces of all the collected people.
+- **Recognition**: This consists of highlighting the  recognized person and showing a confidence meter. The user clicks either one of the people or the Add Person button to return to mode 2 (*Collection*).
+
+To quit, the user can hit the *Esc* key in the window at any time. Let's also add a Delete All mode that restarts a new face recognition system, and a Debug button that toggles the display of extra debug information. We can create an enumerated mode variable to show the current mode.
+
+# Drawing the GUI elements
+
+To display the current mode on the screen, let's create a function to draw text easily. OpenCV comes with a cv::putText() function with several fonts and anti-aliasing, but it can be tricky to place the text in the location that you want. Luckily, there is also a cv::getTextSize() function to calculate the bounding box around the text, so we can create a wrapper function to make it easier to place text.
+
+We want to be able to place text along any edge of the window, make  sure it is completely visible, and also to allow placing multiple lines  or words of text next to each other without overwriting. So here is a  wrapper function to allow you to specify either left-justified or  right-justified, as well as to specify top-justified or  bottom-justified, and return the bounding box so we can easily draw  multiple lines of text on any corner or edge of the window:
+
+```
+    // Draw text into an image. Defaults to top-left-justified  
+    // text, so give negative x coords for right-justified text, 
+    // and/or negative y coords for bottom-justified text. 
+    // Returns the bounding rect around the drawn text. 
+    Rect drawString(Mat img, string text, Point coord, Scalar  
+      color, float fontScale = 0.6f, int thickness = 1, 
+      int fontFace = FONT_HERSHEY_COMPLEX);
+```
+
+Now to display the current mode on the GUI, as the background of the  window will be the camera feed, it is quite possible that if we simply  draw text over the camera feed, it might be the same color as the camera background! So, let's just draw a black shadow of text that is just one pixel apart from the foreground text we want to draw. Let's also draw a line of helpful text below it, so the user knows the steps to follow.  Here is an example of how to draw some text using the drawString() function:
+
+```
+    string msg = "Click [Add Person] when ready to collect faces."; 
+    // Draw it as black shadow & again as white text. 
+    float txtSize = 0.4; 
+    int BORDER = 10; 
+    drawString (displayedFrame, msg, Point(BORDER, -BORDER-2), 
+      CV_RGB(0,0,0), txtSize); 
+    Rect rcHelp = drawString(displayedFrame, msg, Point(BORDER+1, 
+      -BORDER-1), CV_RGB(255,255,255), txtSize);
+```
+
+The following partial screenshot shows the mode and information at  the bottom of the GUI window, overlaid on top of the camera image:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/64487abc-dfaf-4b66-90bd-2a84c2dd1960.png)
+
+We mentioned that we want a few GUI buttons, so let's create a function to draw a GUI button easily, as follows:
+
+```
+    // Draw a GUI button into the image, using drawString(). 
+    // Can give a minWidth to have several buttons of same width. 
+    // Returns the bounding rect around the drawn button. 
+    Rect drawButton(Mat img, string text, Point coord, 
+      int minWidth = 0) 
+    { 
+      const int B = 10; 
+      Point textCoord = Point(coord.x + B, coord.y + B); 
+      // Get the bounding box around the text. 
+      Rect rcText = drawString(img, text, textCoord,  
+        CV_RGB(0,0,0)); 
+      // Draw a filled rectangle around the text. 
+      Rect rcButton = Rect(rcText.x - B, rcText.y - B, 
+        rcText.width + 2*B, rcText.height + 2*B); 
+      // Set a minimum button width. 
+      if (rcButton.width < minWidth) 
+        rcButton.width = minWidth; 
+      // Make a semi-transparent white rectangle. 
+      Mat matButton = img(rcButton); 
+      matButton += CV_RGB(90, 90, 90); 
+      // Draw a non-transparent white border. 
+      rectangle(img, rcButton, CV_RGB(200,200,200), 1, LINE_AA); 
+
+      // Draw the actual text that will be displayed. 
+      drawString(img, text, textCoord, CV_RGB(10,55,20)); 
+
+      return rcButton; 
+    }
+```
+
+Now, we create several clickable GUI buttons using the drawButton() function,
+ which will always be shown at the top-left of the GUI, as shown in the following
+ partial screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/01de530f-c1f3-4c50-bdd7-9c3e9d6dddac.jpg)
+
+As we mentioned, the GUI program has some modes that it switches  between (as a finite state machine), beginning with the Startup mode. We will store the current mode as the m_mode variable.
+
+# Startup mode
+
+In the Startup mode, we just need to load the XML detector files to  detect the face and eyes and initialize the webcam, which we've already  covered. Let's also create a main GUI window with a mouse callback  function that OpenCV will call whenever the user moves or clicks their  mouse in our window. It may also be desirable to set the camera  resolution to something reasonable; for example, 640 x 480, if the  camera supports it. This is done as follows:
+
+```c++
+    // Create a GUI window for display on the screen. 
+    namedWindow(windowName); 
+
+    // Call "onMouse()" when the user clicks in the window. 
+    setMouseCallback(windowName, onMouse, 0); 
+
+    // Set the camera resolution. Only works for some systems. 
+    videoCapture.set(CAP_PROP_FRAME_WIDTH, 640); 
+    videoCapture.set(CAP_PROP_FRAME_HEIGHT, 480); 
+
+    // We're already initialized, so let's start in Detection mode. 
+    m_mode = MODE_DETECTION;
+```
+
+# Detection mode
+
+In the Detection mode, we want to continuously detect faces and eyes, draw rectangles or circles around them to show the detection result,  and show the current preprocessed face. In fact, we will want these to  be displayed no matter which mode we are in. The only thing special  about the Detection mode is that it will change to the next mode (*Collection*) when the user clicks the Add Person button.
+
+If you remember from the detection step, in this chapter, the output of our detection stage will be as follows:
+
+- Mat preprocessedFace: The preprocessed face (if face and eyes
+   were detected)
+- Rect faceRect: The detected face region coordinates
+- Point leftEye, rightEye: The detected left and right eye center coordinates
+
+So, we should check whether a preprocessed face was returned, and  draw a rectangle and circles around the face and eyes if they were  detected, as follows:
+
+```
+    bool gotFaceAndEyes = false; 
+    if (preprocessedFace.data) 
+      gotFaceAndEyes = true; 
+
+    if (faceRect.width > 0) { 
+      // Draw an anti-aliased rectangle around the detected face. 
+      rectangle(displayedFrame, faceRect, CV_RGB(255, 255, 0), 2, 
+        CV_AA); 
+
+      // Draw light-blue anti-aliased circles for the 2 eyes. 
+      Scalar eyeColor = CV_RGB(0,255,255); 
+      if (leftEye.x >= 0) {   // Check if the eye was detected 
+        circle(displayedFrame, Point(faceRect.x + leftEye.x, 
+          faceRect.y + leftEye.y), 6, eyeColor, 1, LINE_AA); 
+      } 
+      if (rightEye.x >= 0) {   // Check if the eye was detected 
+        circle(displayedFrame, Point(faceRect.x + rightEye.x,  
+          faceRect.y + rightEye.y), 6, eyeColor, 1, LINE_AA); 
+      } 
+    }
+```
+
+We will overlay the current preprocessed face at the top center of the window as follows:
+
+```
+    int cx = (displayedFrame.cols - faceWidth) / 2; 
+    if (preprocessedFace.data) { 
+      // Get a BGR version of the face, since the output is BGR. 
+      Mat srcBGR = Mat(preprocessedFace.size(), CV_8UC3); 
+      cvtColor(preprocessedFace, srcBGR, COLOR_GRAY2BGR); 
+
+      // Get the destination ROI. 
+      Rect dstRC = Rect(cx, BORDER, faceWidth, faceHeight); 
+      Mat dstROI = displayedFrame(dstRC); 
+
+      // Copy the pixels from src to dst. 
+      srcBGR.copyTo(dstROI); 
+    } 
+    // Draw an anti-aliased border around the face. 
+    rectangle(displayedFrame, Rect(cx-1, BORDER-1, faceWidth+2, 
+      faceHeight+2), CV_RGB(200,200,200), 1, LINE_AA);
+```
+
+The following screenshot shows the displayed GUI when in the  Detection mode. The preprocessed face is shown at the top center, and  the detected face and eyes are marked:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7b8d5499-4318-4700-ac68-baf3b807e1d4.jpg)
+
+
+
+# Collection mode
+
+We enter the Collection mode when the user clicks on the Add Person button to signal that they want to begin collecting faces for a new person. As mentioned previously, we have limited the face collection to one face  per second, and then only if it has changed noticeably from the  previously collected face. And remember, we decided to collect not only  the preprocessed face, but also the mirror image of the preprocessed  face.
+
+In the Collection mode, we want to show the most recent face of each  known person and let the user click on one of those people to add more  faces to them, or click the Add Person button to add a new person to the collection. The user must click somewhere in the middle of the window to continue to the next mode (*Training mode*).
+
+So, first we need to keep a reference to the latest face that was collected for each person. We'll do this by updating the m_latestFaces array of integers, which just stores the array index of each person from the big preprocessedFaces array (that is, the collection of all faces of the all the people). As we  also store the mirrored face in that array, we want to reference the  second-last face, not the last face. This code should be appended to the code that adds a new face (and mirrored face) to the preprocessedFaces array:
+
+```
+    // Keep a reference to the latest face of each person. 
+    m_latestFaces[m_selectedPerson] = preprocessedFaces.size() - 2;
+```
+
+We just have to remember to always grow or shrink the m_latestFaces array whenever a new person is added or deleted (for example, due to the user clicking on the Add Person button). Now, let's display the most recent face for each of the collected  people on the right-hand side of the window (both in the Collection mode and Recognition mode later) as follows:
+
+```
+    m_gui_faces_left = displayedFrame.cols - BORDER - faceWidth; 
+    m_gui_faces_top = BORDER; 
+    for (int i=0; i<m_numPersons; i++) { 
+      int index = m_latestFaces[i]; 
+      if (index >= 0 && index < (int)preprocessedFaces.size()) { 
+        Mat srcGray = preprocessedFaces[index]; 
+        if (srcGray.data) { 
+          // Get a BGR face, since the output is BGR. 
+          Mat srcBGR = Mat(srcGray.size(), CV_8UC3); 
+          cvtColor(srcGray, srcBGR, COLOR_GRAY2BGR); 
+
+          // Get the destination ROI 
+          int y = min(m_gui_faces_top + i * faceHeight, 
+          displayedFrame.rows - faceHeight); 
+          Rect dstRC = Rect(m_gui_faces_left, y, faceWidth, 
+          faceHeight); 
+          Mat dstROI = displayedFrame(dstRC); 
+
+          // Copy the pixels from src to dst. 
+          srcBGR.copyTo(dstROI); 
+        } 
+      } 
+    }
+```
+
+We also want to highlight the current person being collected, using a thick red border around their face. This is done as follows:
+
+```
+    if (m_mode == MODE_COLLECT_FACES) { 
+      if (m_selectedPerson >= 0 && 
+        m_selectedPerson < m_numPersons) { 
+        int y = min(m_gui_faces_top + m_selectedPerson *  
+        faceHeight, displayedFrame.rows - faceHeight); 
+        Rect rc = Rect(m_gui_faces_left, y, faceWidth, faceHeight); 
+        rectangle(displayedFrame, rc, CV_RGB(255,0,0), 3, LINE_AA); 
+      } 
+    }
+```
+
+The following partial screenshot shows the typical display when faces for several people have been collected. The user can click on any of  the people at the top right to collect more faces for that person:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/05861018-bd48-4339-a8da-271d59e6be96.png)
+
+# Training mode
+
+When the user finally clicks in the middle of the window, the face  recognition algorithm will begin training on all the collected faces.  But it is important to make sure there have been enough faces or people  collected, otherwise the program may crash. In general, this just  requires making sure there is at least one face in the training set  (which implies there is at least one person). But the Fisherfaces  algorithm looks for comparisons between people, so if there are less  than two people in the training set, it will also crash. So, we must  check whether the selected face recognition algorithm is Fisherfaces. If it is, then we require at least two people with faces, otherwise we  require at least one person with a face. If there isn't enough data,  then the program goes back to the Collection mode so the user can add  more faces before training.
+
+To check there are at least two people with collected faces, we can make sure that when a user clicks on the Add Person button, a new person is only added if there isn't any empty person (that is, a  person that was added but does not have any collected faces yet). If  there are just two people, and we are using the Fisherfaces algorithm,  then we must make sure an m_latestFaces reference was set for the last person during the Collection mode. Then, m_latestFaces[i] is initialized to -1 when there still haven't been any faces added to that person, and it becomes 0 or higher once faces for that person have been added. This is done as follows:
+
+```
+    // Check if there is enough data to train from. 
+    bool haveEnoughData = true; 
+    if (!strcmp(facerecAlgorithm, "FaceRecognizer.Fisherfaces")) { 
+      if ((m_numPersons < 2) || 
+      (m_numPersons == 2 && m_latestFaces[1] < 0) ) { 
+        cout << "Fisherfaces needs >= 2 people!" << endl; 
+        haveEnoughData = false; 
+      } 
+    } 
+    if (m_numPersons < 1 || preprocessedFaces.size() <= 0 || 
+      preprocessedFaces.size() != faceLabels.size()) { 
+      cout << "Need data before it can be learnt!" << endl; 
+      haveEnoughData = false; 
+    } 
+
+    if (haveEnoughData) { 
+      // Train collected faces using Eigenfaces or Fisherfaces. 
+      model = learnCollectedFaces(preprocessedFaces, faceLabels, 
+              facerecAlgorithm); 
+
+      // Now that training is over, we can start recognizing! 
+      m_mode = MODE_RECOGNITION; 
+    } 
+    else { 
+      // Not enough training data, go back to Collection mode! 
+      m_mode = MODE_COLLECT_FACES; 
+    }
+```
+
+The training may take a fraction of a second, or it may take several  seconds or even minutes, depending on how much data is collected. Once  the training of collected faces is complete, the face recognition system will automatically enter the *Recognition mode*.
+
+# Recognition mode
+
+In the Recognition mode, a confidence meter is shown next to the preprocessed face, so the user knows how reliable the recognition is. If the confidence level is higher than the unknown  threshold, it will draw a green rectangle around the recognized person  to show the result easily. The user can add more faces for further  training if they click on the Add Person button or one of the existing people, which causes the program to return to the Collection mode.
+
+Now, we have obtained the recognized identity and the similarity with the reconstructed face, as mentioned earlier. To display the confidence meter, we know that the L2 similarity value is generally between 0 and  0.5 for high confidence, and between 0.5 and 1.0 for low confidence, so we can just subtract it from 1.0 to get the confidence level between 0.0 to 1.0.
+
+Then, we just draw a filled rectangle using the confidence level as the ratio, shown as follows:
+
+```
+    int cx = (displayedFrame.cols - faceWidth) / 2; 
+    Point ptBottomRight = Point(cx - 5, BORDER + faceHeight); 
+    Point ptTopLeft = Point(cx - 15, BORDER); 
+
+    // Draw a gray line showing the threshold for "unknown" people. 
+    Point ptThreshold = Point(ptTopLeft.x, ptBottomRight.y - 
+      (1.0 - UNKNOWN_PERSON_THRESHOLD) * faceHeight); 
+    rectangle(displayedFrame, ptThreshold, Point(ptBottomRight.x, 
+    ptThreshold.y), CV_RGB(200,200,200), 1, CV_AA); 
+
+    // Crop the confidence rating between 0 to 1 to fit in the bar. 
+    double confidenceRatio = 1.0 - min(max(similarity, 0.0), 1.0); 
+    Point ptConfidence = Point(ptTopLeft.x, ptBottomRight.y - 
+      confidenceRatio * faceHeight); 
+
+    // Show the light-blue confidence bar. 
+    rectangle(displayedFrame, ptConfidence, ptBottomRight, 
+      CV_RGB(0,255,255), CV_FILLED, CV_AA); 
+
+    // Show the gray border of the bar. 
+    rectangle(displayedFrame, ptTopLeft, ptBottomRight, 
+      CV_RGB(200,200,200), 1, CV_AA);
+```
+
+To highlight the recognized person, we draw a green rectangle around their face as follows:
+
+```
+    if (identity >= 0 && identity < 1000) { 
+      int y = min(m_gui_faces_top + identity * faceHeight, 
+        displayedFrame.rows - faceHeight); 
+      Rect rc = Rect(m_gui_faces_left, y, faceWidth, faceHeight); 
+      rectangle(displayedFrame, rc, CV_RGB(0,255,0), 3, CV_AA); 
+    }
+```
+
+The following partial screenshot shows a typical display when running in Recognition mode, showing the confidence meter next to the  preprocessed face at the top center, and highlighting the recognized  person in the top right corner:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cb02aeda-9a38-4c04-8fa9-42bbb5cca344.png)
+
+# Checking and handling mouse clicks
+
+Now that we have all our GUI elements drawn, we need to process mouse events. When we initialized the display window, we told OpenCV that we  want a mouse event callback to our onMouse function.
+
+We don't care about mouse movement, only the mouse clicks, so first  we skip the mouse events that aren't for the left mouse button click as  follows:
+
+```
+    void onMouse(int event, int x, int y, int, void*) 
+    { 
+      if (event != CV_EVENT_LBUTTONDOWN) 
+        return; 
+
+      Point pt = Point(x,y); 
+
+      ... (handle mouse clicks) 
+      ... 
+    }
+```
+
+As we obtained the drawn rectangle bounds of the buttons when drawing them, we just check whether the mouse click location is in any of our  button regions by calling OpenCV's inside() function. Now, we can check for each button we have created.
+
+When the user clicks on the Add Person button, we add one to the m_numPersons variable, allocate more space in the m_latestFaces variable, select the new person for the collection, and begin the Collection mode (no matter which mode we were previously in).
+
+But there is one complication: to ensure that we have at least one  face for each person when training, we will only allocate space for a  new person if there isn't already a person with zero faces. This will  ensure that we can always check the value of m_latestFaces[m_numPersons-1] to see if a face has been collected for every person. This is done as follows:
+
+```
+    if (pt.inside(m_btnAddPerson)) { 
+      // Ensure there isn't a person without collected faces. 
+      if ((m_numPersons==0) || 
+         (m_latestFaces[m_numPersons-1] >= 0)) { 
+          // Add a new person. 
+          m_numPersons++; 
+          m_latestFaces.push_back(-1); 
+      } 
+      m_selectedPerson = m_numPersons - 1; 
+      m_mode = MODE_COLLECT_FACES; 
+    }
+```
+
+This method can be used to test for other button clicks, such as toggling the debug flag as follows:
+
+```
+    else if (pt.inside(m_btnDebug)) { 
+      m_debug = !m_debug; 
+    }
+```
+
+To handle the Delete All button, we need to empty various data structures that are local to our main  loop (that is, not accessible from the mouse event callback function),  so we change to the Delete All mode and then we can delete everything from inside the main loop. We must  also deal with the user clicking the main window (that is, not a  button). If they clicked on one of the people on the right-hand side,  then we want to select that person and change to the Collection mode.  Or, if they clicked in the main window while in the Collection mode,  then we want to change to the Training mode. This is done as follows:
+
+```C++
+    else { 
+      // Check if the user clicked on a face from the list. 
+      int clickedPerson = -1; 
+      for (int i=0; i<m_numPersons; i++) { 
+        if (m_gui_faces_top >= 0) { 
+          Rect rcFace = Rect(m_gui_faces_left,  
+          m_gui_faces_top + i * faceHeight, faceWidth, faceHeight); 
+          if (pt.inside(rcFace)) { 
+            clickedPerson = i; 
+            break; 
+          } 
+        } 
+      } 
+      // Change the selected person, if the user clicked a face. 
+      if (clickedPerson >= 0) { 
+        // Change the current person & collect more photos. 
+        m_selectedPerson = clickedPerson; 
+        m_mode = MODE_COLLECT_FACES; 
+      } 
+      // Otherwise they clicked in the center. 
+      else { 
+        // Change to training mode if it was collecting faces. 
+        if (m_mode == MODE_COLLECT_FACES) { 
+            m_mode = MODE_TRAINING; 
+        } 
+      } 
+    }
+```
+
+# Summary
+
+This chapter has shown you all the steps required to create a  real-time face recognition application, with enough preprocessing to  allow some differences between the training set conditions and the  testing set conditions, just using basic algorithms. We used face  detection to find the location of a face within the camera image,  followed by several forms of face preprocessing to reduce the effects of different lighting conditions, camera and face orientations, and facial expressions.
+
+We then trained an Eigenfaces or Fisherfaces machine learning system  with the preprocessed faces we collected, and finally we performed face  recognition to see who the person is with face verification, providing a confidence metric in case it is an unknown person.
+
+Rather than providing a command-line tool that processes image files  in an offline manner, we combined all the preceding steps into a  self-contained real-time GUI program to allow immediate use of the face  recognition system. You should be able to modify the behavior of the  system for your own purposes, such as to allow automatic login on your  computer, or if you are interested in improving recognition reliability, then you can read conference papers about recent advances in face  recognition to potentially improve each step of the program until it is  reliable enough for your specific needs. For example, you could improve  the face preprocessing stages, or use a more advanced machine learning  algorithm, or an even better face verification algorithm, based on  methods at [http://www.facerec.org/algorithms/](http://www.face-rec.org/algorithms/) and http://www.cvpapers.com.
+
+# References
+
+- *Rapid Object Detection Using a Boosted Cascade of Simple Features*, *P. Viola
+   and M.J. Jones*, *Proceedings of the IEEE Transactions on CVPR 2001*, *Vol. 1*,
+   *pp. 511-518*
+- *An Extended Set of Haar-like Features for Rapid Object Detection*, *R. Lienhart and J. Maydt*, *Proceedings of the IEEE Transactions on ICIP 2002*, *Vol. 1*, *pp. 900-903*
+- *Face Description with Local Binary Patterns: Application to Face Recognition*, *T. Ahonen, A. Hadid and M. Pietikäinen*, *Proceedings of the IEEE Transactions on PAMI 2006*, *Vol. 28*, *Issue 12*, *pp. 2037-2041*
+- *Learning OpenCV: Computer Vision with the OpenCV Library*, *G. Bradski and A. Kaehler*, *pp. 186-190*, *O'Reilly Media*.
+- *Eigenfaces for recognition*, *M. Turk and A. Pentland*, *Journal of Cognitive Neuroscience 3*, *pp. 71-86*
+- *Eigenfaces vs. Fisherfaces: Recognition using class specific linear projection*, *P.N. Belhumeur, J. Hespanha and D. Kriegman*, *Proceedings of the IEEE Transactions on PAMI 1997*, *Vol. 19*, *Issue 7*, *pp. 711-720*
+- *Face Recognition with Local Binary Patterns*, *T. Ahonen, A. Hadid and M. Pietikäinen*, *Computer Vision - ECCV 2004*, *pp. 469-48*
+
 # Chapter 06 Introduction to Web Computer Vision with OpenCV.js
+
+This chapter introduces you to a new way to develop  computer vision algorithms for the web. When a computer vision algorithm has to be written for the World Wide Web, normally it is a C++ program  on the server that is executed when a client calls it via a web server,  but with OpenCV.js, this way to develop computer vision algorithms is  extended not only on the server but also extended to the browser client. The algorithms can be executed in the client browser, allowing  developers to have more flexibility and use the benefits of running code in the clients' browsers.
+
+In this chapter, we are going to learn the following:
+
+- What OpenCV.js is and the benefits of client browser code
+- Develop basic algorithms for image manipulation
+- Work with video or webcam in the browser
+- Manipulate frames with OpenCV.js
+- Face detection in a web browser using OpenCV.js
+
+
+
+
+
+# What is OpenCV.js?
+
+OpenCV.js is a port of some OpenCV functions using new technology  that compiles C++ code into JavaScript. OpenCV uses Emscripten to  compile C++ functions into Asm.js or WebAssembly targets. Emscripten is  an LLVM-to-JavaScript compiler that compiles from **low-level virtual machine** (**LLVM**) bitcode to Asm.js or WebAssembly JavaScript, which can be executed in any new web browser. **Emscripten** works as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/154a8d7b-0bfc-4adb-bbee-2979be07b7af.png)
+
+
+
+The increase in web applications, and the news on web HTML5 standards such as WebGL or WebRTC that allow developers access to webcams, create emerging possibilities for new applications. OpenCV brings to web  developers more powerful increase on the browser to develop new  algorithms with OpenCV.js, allowing the use of computer vision  algorithms and giving possibilities of new applications such as: web  virtual reality, web augmented reality, face detection and recognition,  image manipulation and so much more. 
+
+Asm.js is highly optimized and it is designed to be near-native code, achieving speeds 2x (depends on browser and computer) slower than the same native executable application.
+
+Asm.js is a subset of JavaScript that takes a C++ function like this:
+
+```
+int f(int i) {
+   return i + 1; 
+}
+```
+
+And converts it into JavaScript code like this:
+
+```
+function f(i) {
+  i = i|0;
+  return (i + 1)|0;
+}
+```
+
+WebAssembly is a new technology and web standard that defines a  binary format for executing code in web pages. It is developed to  complement JavaScript to speed up applications that must run like native code. This technology is the best choice to increase the performance  for computer vision and port OpenCV to JavaScript. For example, see the  following C code:
+
+```
+int factorial(int n) {
+  if (n == 0)
+    return 1;
+  else
+    return n * factorial(n-1);
+}
+```
+
+This is transformed into a binary encoding like this:
+
+```
+20 00
+50
+04 7E
+42 01
+05
+20 00
+20 00
+42 01
+7D
+10 00
+7E
+0B
+```
+
+This binary encoding that generates WebAssembly allows the size  minimization of large files like OpenCV.js for example. That is compiled with WebAssembly and is highly optimized for speed achieving  near-native code that is just 1.5x slower.
+
+But, what are the benefits of using OpenCV.js in a client browser instead of a C++ program on the server? One benefit is the ease of porting an  application to any operating system without compiling it on each OS.  Another very interesting benefit is optimizing computing time and cost;  for example, imagine that you create a web application that has to  detect and recognize people in front of a webcam, this algorithm takes  100 ms to compute, and it is used by 1,000 users per second, then we  require 100 seconds to compute the 1,000 users' queries. If we only put  10 processes in parallel to reply in 100 ms, we need 10 servers to get a fast reply. To save money, we can leave the computer vision on the  client browsers using OpenCV.js, and send to the server only the results of the computer vision operation. 
+
+# Compile OpenCV.js
+
+To compile OpenCV.js, we need to install Emscripten. Emscripten requires the following:
+
+- Python 2.7
+- Node.js
+- cmake
+- Java runtime
+
+We can install these dependencies following the next instructions:
+
+```
+# Install Python
+sudo apt-get install python2.7
+
+# Install node.js
+sudo apt-get install nodejs
+
+# Install CMake (optional, only needed for tests and building Binaryen)
+sudo apt-get install cmake
+
+# Install Java (optional, only needed for Closure Compiler minification)
+sudo apt-get install default-jre
+```
+
+Now, we have to download Emscripten from the GitHub repository:
+
+```
+# Get the emsdk repo
+git clone https://github.com/juj/emsdk.git
+
+# Enter that directory
+cd emsdk
+```
+
+Now, we only have to update and install the environment variables  required by Emscripten and we can do that following the next steps in  the command line:
+
+```
+# Download and install the latest SDK tools.
+./emsdk install latest
+
+# Make the "latest" SDK "active" for the current user. (writes ~/.emscripten file)
+./emsdk activate latest
+
+# Activate PATH and other environment variables in the current terminal
+source ./emsdk_env.sh
+```
+
+Now, we are ready to compile OpenCV into JavaScript. After  downloading OpenCV from GitHub and accessing the OpenCV folder, we have  to create a build folder with a name like build_js and execute the next command line to compile OpenCV into Asm.js:
+
+```
+python ./platforms/js/build_js.py build_js
+```
+
+Or with the --build_wasm parameter to compile for WebAssembly:
+
+```
+python ./platforms/js/build_js.py build_js --build_wasm
+```
+
+If we require more debug information and exception catching, we can enable it using the --enable_exception parameter.
+
+The binary results are generated in the build_js/bin folder, where you can locate the opencv.js and opencv.wasm files that you can use in your web pages.
+
+# Basic introduction to OpenCV.js development
+
+Before starting to develop with OpenCV.js, we require a basic HTML  structure with the required HTML elements to work with. In our examples, we are going to use Bootstrap, which is a toolkit to build responsive  web applications with multiple predesigned web components and utilities, using HTML, CSS, and JavaScript. We are going to use JQuery library to  work easily with HTML elements, events, and callbacks. We  can develop the same samples of this chapter without Bootstrap and  JQuery, or use other frameworks or libraries like AngularJS, VUE, and so on, but the simplicity of Bootstrap and JQuery will help us understand  and write our web page code.
+
+We are going to use the same HTML structure template for all our  samples, which consists of a header, a left menu where we put links to  each example code, and the main content where we are going to write the  example code. The HTML structure looks like this:
+
+```
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/custom.css">
+    
+    <title>OpenCV Computer vision on Web. Packt Publishing.</title>
+  </head>
+  <body>
+    <nav class="navbar navbar-dark fixed-top flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">OpenCV.js</a>
+        <h1 class="col-md-10">TITLE</h1>
+    </nav>    
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="sidebar-sticky">
+                    <ul id="menu" class="nav flex-column">
+                        MENU ITEMS LOAD WITH JavaScript 
+                    </ul>
+                </div>
+            </nav>
+            <main role="main" class="col-md-10 ml-sm-auto col-lg-10 px-4">
+               EXAMPLE CONTENT
+            </main>
+        </div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/common.js"></script>
+    <!-- OPENCV -->
+    <script async="" src="js/opencv.js" type="text/JavaScript" onload="onOpenCvReady();" onerror="onOpenCvError();"></script>
+
+    <script type="text/JavaScript">
+        // OUR EXAMPLE SCRIPT
+        function onOpenCvReady() { 
+            // OPENCV.JS IS LOADED AND READY TO START TO WORK
+        }
+        
+        function onOpenCvError() { 
+            // CALLBACK IF ERROR LOADING OPENCV.JS
+        }
+    </script>
+  </body>
+</html>
+```
+
+If we take a look at this code, the most important parts will be in the EXAMPLE CONTENT part, where we are going to write the HTML elements that will interact with OpenCV.js in the following snippet:
+
+```
+<!-- OPENCV -->
+    <script async="" src="js/opencv.js" type="text/JavaScript" onload="onOpenCvReady();" onerror="onOpenCvError();"></script>
+
+    <script type="text/JavaScript">
+        // OUR EXAMPLE SCRIPT
+        function onOpenCvReady() { 
+            // OPENCV.JS IS LOADED AND READY TO START TO WORK
+        }
+        
+        function onOpenCvError() { 
+            // CALLBACK IF ERROR LOADING OPENCV.JS
+        }
+    </script>
+```
+
+The onOpenCvReady and onOpenCvError callback functions will be called when OpenCV.js is loaded and ready to use or if we have an error loading it, respectively.
+
+Now that we have the main HTML structure created, we are going to  start with the first example. In this example, we are going to create  the following:
+
+- An **alert box** to show when OpenCV.js is loaded,  because OpenCV.js is heavy and will take a few seconds to load on the  client browser. So, we are going to load it asynchronously and when it's loaded, we will start to load the other required code and user  interfaces.
+- An **image** element to load the client image.
+- A **canvas** element, which shows the result of our algorithm.
+- A **button** to load the file image.
+
+Then, we are going to create the required HTML elements. To create the **alert box**, we are going to use our bootstrap alert class, using a div HTML element wrapped in a single column of a row. The code to do this is given here:
+
+```
+...
+<div class="row">
+    <div class="col">
+        <div id="status" class="alert alert-primary" role="alert">
+            <img src="img/ajax-loader.gif" /> Loading OpenCV...</div>
+     </div>
+</div>
+...
+```
+
+Now, we are going to create a row block that contains the following elements: **input image** using the img element, and **canvas output** result using the canvas element.
+
+```
+...
+<div class="row">
+    <div class="col">
+        <img id="imageSrc" alt="No Image" class="small" src="img/white.png">
+    </div>
+    <div class="col">
+        <canvas id="canvasOutput" class="small" height="300px"></canvas>
+    </div>
+</div>
+...
+```
+
+To finish, we need to add the file button using the input HTML element of type file, as shown in this code:
+
+```
+<input type="file" id="fileInput" name="file" accept="image/*">
+```
+
+The preceding HTML code looks like this screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e8e61051-c044-4f91-9fc3-cffd09b1e386.png)
+
+Preview of the image input and canvas output section
+
+We are now ready to start working with OpenCV.js. Now we are going to explain how to load an image, convert it to grayscale, and show it on the browser via the canvas element. The first  thing we are going to do is to alert the user that OpenCV.js is loaded  and we can then start to select an image. We are going to use the onOpenCvReady callback function to change the alert box content with the following code:
+
+```
+function onOpenCvReady() { 
+    document.getElementById('status').innerHTML = '<b>OpenCV.js is ready</b>.' +
+        'You can upload an image.<br>' +
+        'The <b>imageSrc</b> is a <img> element used as cv.Mat input. ' +
+        'The <b>canvasOutput</b> is a <canvas> element used as cv.Mat output.';
+}
+```
+
+And if there are any issues loading OpenCV.js, we can use the onOpenCvError callback function to show an error in the alert box:
+
+```
+function onOpenCvError() { 
+    let element = document.getElementById('status');
+    element.setAttribute('class', 'err');
+    element.innerHTML = 'Failed to load opencv.js';
+}
+```
+
+Now, we can check when the user clicks the file input button to load an image into the img HTML element. To create a callback for a file input, we first save the input file button into a variable:
+
+```
+let inputElement = document.getElementById('fileInput');
+```
+
+And, we create an event when the user clicks and changes the input file value using addEventListener, with the first parameter as *change*:
+
+```
+inputElement.addEventListener('change', (e) => {
+    imgElement.src = URL.createObjectURL(e.target.files[0]);
+}, false);
+```
+
+When the user clicks on the button, we have to set up the source of our image element using the src attribute that we previously saved into the imgElement variable:
+
+```
+let imgElement = document.getElementById('imageSrc');
+```
+
+The finishing step is to process the image loaded in the img element (the imgElement variable) to convert it into grayscale and show it in the canvas output. Then, we create a new event listener for imgElement, assigning a function to the onload attribute:
+
+```
+imgElement.onload = function() {
+...
+};
+```
+
+This function will be called when the image element is loaded. In  this function, we will read the image in this element, like OpenCV does, while reading the file using the imread function:
+
+```
+let mat = cv.imread(imgElement);
+```
+
+And later, we convert the mat variable image using the cvtColor function. As we can see, the functions are very similar to the C++ interfaces:
+
+```
+cv.cvtColor(mat, mat, cv.COLOR_BGR2GRAY);
+```
+
+Finally, we show the image on the canvas using the imshow  function, as a C++ interface, but in this case, instead of putting the  name of the window we want to show the image in, we put the ID of the  canvas we want to show the image on:
+
+```
+cv.imshow('canvasOutput', mat);
+```
+
+It is a good practice to release all the memory that we do not require, rather than releasing the mat variable using the delete function:
+
+```
+mat.delete();
+```
+
+The complete code of the onload function looks like this: 
+
+```
+imgElement.onload = function() {
+    let mat = cv.imread(imgElement);
+    cv.cvtColor(mat, mat, cv.COLOR_BGR2GRAY);
+    cv.imshow('canvasOutput', mat);
+    mat.delete();
+};
+```
+
+And this is the final result in the web page after loading an image:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/896fe342-ddea-4882-87ba-6741085c2559.png)
+
+Final output after using the image input and canvas output element
+
+Now, we are ready to continue exploring OpenCV.js, and before working a bit more on processing images or frames, we are going to learn how to read a video streaming from a webcam.
+
+
+
+# Accessing webcam streams
+
+In the previous section, we learned how to read an image; now, we are going to learn how to read framed images from a webcam stream. To do  this, we need the following HTML elements:
+
+- An **alert box** to show when OpenCV.js is loaded; because OpenCV.js is heavy and will take a few  seconds to load on the client browser, then we are going to load it  asynchronously and when it's loaded, we will start to load the other  required code and user interfaces.
+- A video element to load the client video stream with the ID videoInput.
+- A Canvas element which shows the result of our algorithm.
+- A button to start processing video frames with the ID cv_start, which is initially hidden.
+
+We are going to maintain the same alert box and canvas elements used in the previous sample and add two new  elements, a button using the link and a video HTML element, as we can  see in the next code snippet:
+
+```
+<div class="row">
+    <div class="col">
+       <div id="status" class="alert alert-primary" role="alert"><img src="img/ajax-loader.gif" /> Loading OpenCV...</div>
+    </div>
+</div>
+<a href="#" class="btn btn-primary" style="display: none;" id="cv_start">Start</a>
+<div class="row">
+    <div class="col">
+        <video id="videoInput" width="320" height="240"></video>
+    </div>
+    <div class="col">
+        <canvas id="canvasOutput" class="small" height="300px"></canvas>
+    </div>
+</div>
+```
+
+Now, the web page looks like this:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/444a29cb-cf9a-47fd-a5f2-a4b0693e6381.png)
+
+And we only have to develop the interactivity and computer vision  processing. First, we have to get a webcam stream to show as a video  element. To do this, we need to call the browser we require to access  the media devices, in this case, only video stream with the following  code:
+
+```
+navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+```
+
+This code prompt to the user access to webcam media devices, when the users allow the use of the webcam we can get the stream using the  promise function then or catch any error with catch function. In the then function we get the stream of a webcam and then we can set the stream  into the video source to start the video playing. We can see this in the next code:
+
+```
+navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+.then(function(stream) {
+     video.srcObject = stream;
+     video.play();
+})
+.catch(function(err) {
+     console.log("An error occurred! " + err);
+});
+```
+
+When OpenCV.js is loaded, we are going to show the start button and attach it to the click event:
+
+```
+$("#cv_start").show();
+$("#cv_start").click(start_cv);
+```
+
+The start_cv function initializes the required computer vision variables and starts to process function. We need to initialize the input *mat* and the output *mat* as a matrix with same width and height of video input, to know the width and height of the video input we are going to use the video HTML properties. As we want to process the frames to convert as a gray image the output dst mat will be only 1 channel cv.CV_8UC1 and we need to initialize the video capture as we do in C++ using cv.VideoCapture function, passing as parameter the HTML video element we set before and we want to use as capturing element. We can see this explanation in the next few lines of code:
+
+```
+let video = document.getElementById("videoInput"); // video is the ID of video tag
+let src;
+let dst;
+let cap;
+
+function start_cv(){
+    // Init required variables
+    src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+    dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+    cap = new cv.VideoCapture(video);
+    // start to process
+    processVideo();
+}
+```
+
+Take care, as the video HTML input has four channels, RGBA, which is different from a C++ video capture from a webcam, which only has three channels.
+
+Next, we are going to grab each frame from the video capture, convert it to a grayscale image, and show it to the user using a canvas  element. To read a frame from the video stream, we only need to call the read function and put the mat as the parameter where we want to save the image, like with a C++ interface, as we can see in the next code:
+
+```
+cap.read(src);
+```
+
+Now we are going to convert the src mat to gray and show it in the canvas output, as we did in the previous section:
+
+```
+cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+cv.imshow('canvasOutput', dst);
+```
+
+In C++, we will use a loop to read the next frame, but if we do this  in JavaScript, we will block the rest of the JavaScript code. The best  way to grab the next fame to process is to call the processing function again after waiting for a few milliseconds using the setTimeout JavaScript function that call a function after the delay is defined as  the second parameter. As we wish to have a 30 FPS output, we have to  calculate the delay we have to wait before call processing function  again is the 1000 milliseconds divided by 30 frames per second we  require minus the time spent in our processing function. We can do this  calculation using dates, as we can see in the next snippet:
+
+```
+let begin = Date.now();
+...
+// Our processing tasks
+...
+// calculate the delay.
+let delay = 1000/FPS - (Date.now() - begin);
+setTimeout(processVideo, delay);
+```
+
+We can see a full process function in this piece of code:
+
+```
+const FPS = 30;
+function processVideo() {
+    try {
+        let begin = Date.now();
+        // start processing.
+        cap.read(src);
+        cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+        cv.imshow('canvasOutput', dst);
+        // schedule the next one.
+        let delay = 1000/FPS - (Date.now() - begin);
+        setTimeout(processVideo, delay);
+    } catch (err) {
+        console.log(err);
+    }
+};
+```
+
+And the final result looks like this:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/1b4b75c7-4bc0-4408-a8c0-c0361b4dda4d.png)
+
+Now, we are going to learn in a bit more depth about some image processing algorithms in OpenCV.js in the following section.
+
+# Image processing and basic user interface
+
+Now that we know how to read images and webcam streams, we are going  to explain some more basic image processing functions and how to create  basic controls to change their parameters. In this section, we are going to create a web page that allows users to choose a filter to apply to a loaded image. The filters that we are  going to apply are threshold, Gaussian blur, canny, and histogram  equalization. Each filter or algorithm takes different input parameters, which we are going to add to user interfaces to control each one.
+
+First, we are going to generate the required elements to create our  application. As the user has the ability to choose the algorithm/filter  to apply, we are going to add a select HTML element with the possible options to choose from:
+
+```
+<select class="form-control" id="filter">
+    <option value="0">Choose a filter</option>
+    <option value="1">Threshold</option>
+    <option value="2">Gaussian Blur</option>
+    <option value="3">Canny</option>
+    <option value="4">Equalize Histogram</option>
+</select>
+```
+
+For each option, we are going to show different blocks with elements.
+
+# Threshold filter
+
+For threshold, we are going to show an input range element, with a default value of 100 and a range between 0 and 200. When we modify this range value, the attached span element will show the value selected. The final code snippet for the threshold HTML template looks like this:
+
+```
+<div id="step3_o1" class="step_blocks hide">
+     <span class="step">3</span>
+     Threshold: <span id="value_sel">100</span>
+     <input type="range" class="custom-range" min="0" max="255" value="100" id="value"> 
+</div>
+```
+
+# Gaussian filter
+
+For Gaussian, we need a range to select the Gaussian blur kernel; we  will use another input range but we have to limit it to only selecting  odd values. To do this, we set up the default value as 3 and a step of 2, with a range between 1 and 55:
+
+```
+<div id="step3_o2" class="step_blocks hide">
+     <span class="step">3</span>
+     Kernel Filter size: <span id="value_o2_sel">3x3</span>
+     <input type="range" class="custom-range" min="1" max="55" value="3" step="2" id="value_o2"> 
+ </div>
+```
+
+# Canny filter
+
+For a canny filter, we need a few more parameters to configure. In a  canny filter, we need to define two thresholds and the aperture size. To manage both of them, we are going to create input range elements for  each one:
+
+```
+<div id="step3_o3" class="step_blocks hide">
+     <span class="step">3</span>
+     Threshold 1: <span id="value_o3_1_sel">100</span>
+     <input type="range" class="custom-range" min="0" max="255" value="100" id="value_o3_1">
+     Threshold 2: <span id="value_o3_2_sel">150</span>
+     <input type="range" class="custom-range" min="0" max="255" value="150" id="value_o3_2">
+     Aperture size: <span id="value_o3_sel">3</span>
+     <input type="range" class="custom-range" min="3" max="7" value="3" step="2" id="value_o3"> 
+</div>
+```
+
+Finally, to finish the HTML code, we will add the input image and result in canvas, as before:
+
+```
+<div class="col">
+     Input image<br>
+     <img id="imageSrc" class="small" alt="no image">
+</div>
+<div class="col">
+     Result image<br>
+     <canvas id="canvasOutput" class="small" height="300px"></canvas>
+</div>
+```
+
+The HTML result of this code looks like this:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/16974030-7b6b-4ddc-96cf-1bf12728c700.png)
+
+Preview of the canny filter options
+
+Let's go to create the user interaction and image processing function with OpenCV.js.
+
+First, we have to add the same interactivity as the first sample to load the image into the img element:
+
+```
+let inputElement = document.getElementById('fileInput');
+     inputElement.addEventListener('change', (e) => {
+     imgElement.src = URL.createObjectURL(e.target.files[0]);
+ }, false);
+```
+
+The most important thing is showing the desired block of filter  parameters that user must interact with. If we check the HTML code we  wrote for each element block a hide class to not show these  elements to the user. Then, we have to show the filter parameters when  the user chooses the filter with the selected input element. We can use  the onChange callback event to do this. First, we have to hide all blocks that can be shown using the CSS ".step_blocks" selector and the JQuery hide function. To get the selected option, we only need to get access to the val function, and we can benefit from the fact that we named each block with the same ID ending with the corresponding number block and use the show JQuery function to draw it. The complete code snippet looks like this:
+
+```
+$("#filter").change(function(){
+     let filter= parseInt($("#filter").val());
+     $(".step_blocks").hide();
+     $("#step3_o"+filter).show();
+ });
+```
+
+Now, we have to implement the processing algorithms for each filter  we want to apply. The full processing JavaScript code looks like this:
+
+```
+function process() {
+     let mat = cv.imread(imgElement);
+     let mat_result= new cv.Mat();
+     let filter= parseInt($("#filter").val());
+
+     switch(filter) {
+         case 1:{
+             let value= parseInt($("#value").val());
+             cv.threshold(mat, mat_result, value, 255, cv.THRESH_BINARY);
+             break;}
+         case 2:{
+             let value= parseInt($("#value_o2").val());
+             let ksize = new cv.Size(value, value);
+             // You can try more different parameters
+             cv.GaussianBlur(mat, mat_result, ksize, 0, 0, cv.BORDER_DEFAULT);
+             break;}
+         case 3:{
+             let value_t1= parseInt($("#value_o3_1").val());
+             let value_t2= parseInt($("#value_o3_2").val());
+             let value_kernel= parseInt($("#value_o3").val());
+             cv.Canny(mat, mat_result, value_t1,value_t2, value_kernel);
+             break;}
+         case 4:{
+             cv.cvtColor(mat, mat, cv.COLOR_BGR2GRAY);
+             cv.equalizeHist(mat, mat_result);
+             break;
+         }
+     }
+     cv.imshow('canvasOutput', mat_result);
+     mat.delete();
+     mat_result.delete();
+ };
+```
+
+OK, let's understand the code. First, we read the image from the img element using cv.imread, and create the mat to store the output result. To find out which filter is selected, we use the ID of the select element to access its value,  using $("#filter").val() and saving it as a variable named filter.
+
+Using a switch statement, we are going to apply different algorithms  or filters. We use the following filters, which have the same interfaces as C++, and which we have seen in previous chapters:
+
+- cv.threshold
+- cv.GaussianBlur
+- cv.Canny
+- cv.equalizeHist
+
+To access each user interface value, we use JQuery selectors; for example, to access the threshold value input range, we use $("#value").val() and parse it to Int. We do the same with the other parameters and functions.
+
+We can see the final result for each filter in the next screenshot:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/79679c67-6326-4e63-8cf8-dcd50d6bafe4.png)
+
+Final output for each filter that we have used
+
+In this section, we learned how to create basic interfaces and apply  different image processing algorithms. In the next section, we are going to learn how to create a video tracking using optical flow algorithm.
+
+# Optical flow in your browser
+
+In this section, we are going to develop an optical flow over a set  of points. To choose the best points to track, we are going to use an  OpenCV function to choose them. 
+
+In previous chapters, we were going to construct the HTML code that  we needed to grab the frames and show the result. Then we require the  video element and a canvas to show the processed result, and a start  button to process input frames. The HTML code looks like this:
+
+```
+<div class="row">
+    <div class="col">
+    <div id="status" class="alert alert-primary" role="alert"><img src="img/ajax-loader.gif" /> Loading OpenCV...</div>
+</div>
+</div>
+<a href="#" class="btn btn-primary" style="display: none;" id="cv_start">Start</a>
+<div class="row">
+    <div class="col">
+        <video id="videoInput" width="320" height="240"></video>
+    </div>
+    <div class="col">
+        <canvas id="canvasOutput" class="small" height="300px"></canvas>
+    </div>
+</div>
+```
+
+An optical flow algorithm looks for the pattern of motion between two consecutive images caused by the movement of objects or the camera.  Optical flow has two main assumptions: the pixel intensities are equal  for the same object point, and the neighbor pixels have the same motion. Thanks to these assumptions, the algorithms look for frame *t+dt* the same intensity pattern than frame *t* with a *dx* and *dy*. The main function of this method looks like this:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e8424ff8-94ce-4322-99d9-0627f60d2758.png)
+
+Where *I* is the intensity pixel on frame *t* that is calculated from the previous frame.
+
+To optimize the calculations, we can choose the pixels we want to use to calculate the optical flow. We can choose these points manually or  use an OpenCV method to choose the bests points. This function is  called goodFeaturesToTrack. 
+
+The first step we have to do is initialize the required variables and choose the best points to track. As we did in the previous sections, we are going to implement all the initializations in the init_cv function.
+
+First, we initialize the input and output variables and the video capture using the video element:
+
+```
+src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+cap = new cv.VideoCapture(video);
+```
+
+After initializing the required input and output variables we are  going to initialize the required variables for an optical flow that are  the windows size for look for displacement, the number of pyramid levels and the termination criteria. 
+
+```
+// Init the required variables for optical flow
+ winSize = new cv.Size(15, 15);
+ maxLevel = 2;
+ criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03);
+```
+
+We are going to generate random colors for each point we want to  track, to assign each a different color and make them easier to  visualize:
+
+```
+ for (let i = 0; i < maxCorners; i++) {
+     color.push(new cv.Scalar(parseInt(Math.random()*255), parseInt(Math.random()*255),
+     parseInt(Math.random()*255), 255));
+ }
+```
+
+Now, we are going to capture the first frame, look for the best points to track, and save it in the mat p0 as follows:
+
+```
+// take first frame and find corners in it
+ let oldFrame = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+ cap.read(oldFrame);
+ oldGray = new cv.Mat();
+ cv.cvtColor(oldFrame, oldGray, cv.COLOR_RGB2GRAY);
+ p0 = new cv.Mat();
+ let none = new cv.Mat();
+ cv.goodFeaturesToTrack(oldGray, p0, maxCorners, qualityLevel, minDistance, none, blockSize);
+```
+
+We are going to create an image with alpha to draw over the tracking paths:
+
+```
+// Create a mask image for drawing purposes
+ let zeroEle = new cv.Scalar(0, 0, 0, 255);
+ mask = new cv.Mat(oldFrame.rows, oldFrame.cols, oldFrame.type(), zeroEle);
+```
+
+Now, we are ready to start processing every frame and track. We are going to use the processVideo function as in the previous section. 
+
+First, we have to take a new frame and then calculate the optical flow using the Lukas Kanade algorithm (a widely used differential method for optical flow estimation) with the calcOpticalFlowPyrLK function, passing the old frame and new frame in grayscale, and old points and a new mat to save the new points' positions:
+
+```
+// start processing.
+ cap.read(frame);
+ cv.cvtColor(frame, frameGray, cv.COLOR_RGBA2GRAY);
+// calculate optical flow
+ cv.calcOpticalFlowPyrLK(oldGray, frameGray, p0, p1, st, err, winSize, maxLevel, criteria);
+```
+
+Now, we have in the st variable the state of each point. If we have  a state of 0, it means that this point couldn't be processed and must be discarded; if it has a state of 1, we start to track this point and  draw, then we are going to loop over st variable and peek and draw only this points:
+
+```
+// select good points
+let goodNew = [];
+let goodOld = [];
+for (let i = 0; i < st.rows; i++) {
+    if (st.data[i] === 1) {
+         goodNew.push(new cv.Point(p1.data32F[i*2], p1.data32F[i*2+1]));
+         goodOld.push(new cv.Point(p0.data32F[i*2], p0.data32F[i*2+1]));
+     }
+}
+// draw the tracks
+for (let i = 0; i < goodNew.length; i++) {
+    cv.line(mask, goodNew[i], goodOld[i], color[i], 2);
+    cv.circle(frame, goodNew[i], 5, color[i], -1);
+}
+cv.add(frame, mask, frame);
+cv.imshow('canvasOutput', frame);
+```
+
+To finish, the tracking has to update the old frame and old points  with the actual state, because some points could not be tracked anymore. The following code shows how to update the old variables:
+
+```
+// now update the previous frame and previous points
+frameGray.copyTo(oldGray);
+p0.delete(); p0 = null;
+p0 = new cv.Mat(goodNew.length, 1, cv.CV_32FC2);
+for (let i = 0; i < goodNew.length; i++) {
+    p0.data32F[i*2] = goodNew[i].x;
+   p0.data32F[i*2+1] = goodNew[i].y;
+}
+```
+
+This is what our code looks like on the web page:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e429a075-a2d7-43fe-abdf-a3422f854bf1.png)
+
+In this section, we learned how to implement a basic optical flow  using OpenCV.js; in the next section, we are going to learn how to use a cascade classifier to detect faces.
+
+# Face detection using a Haar cascade classifier in your browser
+
+To finish this chapter on OpenCV.js, we are going to learn how to  create a face detector using Haar features in a cascade classifier  algorithm. To get detailed information about face detector using Haar  and Cascade classifier you can read it in [Chapter 3](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/c2482928-787c-4dcf-86c6-ffa856f0d54f.xhtml), *Face Landmark and Pose with the Face Module*, in the *Facial Landmark Detection in OpenCV* section and [Chapter 5](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/86c5b037-c45d-4622-9131-078fca1cf397.xhtml), *Face Detection and Recognition with the DNN Module*, in the *Face detection* section that describe in detail how this two methods works.
+
+Like the previous chapter, we are going to work with video input and  canvas output, then we are going to reuse the same HTML structure to  start our development:
+
+```
+<div class="row">
+    <div class="col">
+    <div id="status" class="alert alert-primary" role="alert"><img src="img/ajax-loader.gif" /> Loading OpenCV...</div>
+</div>
+</div>
+<a href="#" class="btn btn-primary" style="display: none;" id="cv_start">Start</a>
+<div class="row">
+    <div class="col">
+        <video id="videoInput" width="320" height="240"></video>
+    </div>
+    <div class="col">
+        <canvas id="canvasOutput" class="small" height="300px"></canvas>
+    </div>
+</div>
+```
+
+First, we have to work on the Haar cascade face detector, which loads the required model file. We are going to use a util function that  requests the file via HTMLRequest and saves it to memory using an OpenCV.js function called FS_createDataFile, which allows our algorithm to load as a system file:
+
+```
+function createFileFromUrl(path, url, callback) {
+     let request = new XMLHttpRequest();
+     request.open('GET', url, true);
+     request.responseType = 'arraybuffer';
+     request.onload = function(ev) {
+     if (request.readyState === 4) {
+         if (request.status === 200) {
+             let data = new Uint8Array(request.response);
+             cv.FS_createDataFile('/', path, data, true, false, false);
+             callback();
+         } else {
+             self.printError('Failed to load ' + url + ' status: ' + request.status);
+         }
+     }
+ };
+ request.send();
+};
+```
+
+Then, when OpenCV.js is loaded, we call this function to load our model and init the variables when it's done:
+
+```
+function start_cv(){
+     createFileFromUrl("haarcascade_frontalface_default.xml",                
+                       "haarcascade_frontalface_default.xml", ()=>{
+         init_cv();
+         // schedule the first one.
+         setTimeout(processVideo, 10);
+     });
+ }
+```
+
+In this example, we only need to init the input and output images,  the video capture, where save detected faces and the classifier:
+
+```
+function init_cv(){
+     src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+     dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+     cap = new cv.VideoCapture(video);
+     gray = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+     faces = new cv.RectVector();
+     classifier = new cv.CascadeClassifier();
+     // load pre-trained classifiers
+     classifier.load('haarcascade_frontalface_default.xml');
+}
+```
+
+Now, we have to process each frame to detect the faces that appear in it. Then, in the processVideo method that we are going to reuse, we capture the actual frame, convert it to grayscale with the cvtColor function, and use the detectMultiScale2 function to detect all the faces in the frame, which we will save in  the faces vector. Finally, we will draw a rectangle for each face  detected. The code looks like this:
+
+```
+// start processing.
+ cap.read(src);
+ src.copyTo(dst);
+ cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+ // detect faces.
+ let numDetections = new cv.IntVector();
+ classifier.detectMultiScale2(gray, faces, numDetections, 1.1, 3, 0);
+ // draw faces.
+ for (let i = 0; i < faces.size(); ++i) {
+     let face = faces.get(i);
+     let point1 = new cv.Point(face.x, face.y);
+     let point2 = new cv.Point(face.x + face.width, face.y + face.height);
+     cv.rectangle(dst, point1, point2, [255, 0, 0, 255]);
+ }
+ cv.imshow('canvasOutput', dst);
+```
+
+The final result on an HTML page is this:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/4a1259fc-d98b-42f1-8671-55b2e0ce8160.png)
+
+# Summary
+
+In this chapter, we learned how to use OpenCV.js in a web page, how to basically create a HTML structure, and how to access each HTML element in order to  interact with them. We learned how to create a basic user interface and  access image and video streaming through video HTML tags, using the newest HTML5 standards which most browsers implement.
+
+We learned how to load OpenCV.js and check that it is ready to use in our JavaScript programs. We created a web application to apply multiple filters by applying to the input image.
+
+We created an optical flow application that allows developers to  create new possibilities of applications like augmented reality and so  on.
+
+Finally, we learned how to detect faces in real time using the webcam allowing us to extend it to create new applications for face  identification, gestures, or emotion detection.
+
+Now, OpenCV is on the web. Enjoy with these new possibilities of applications!
+
+In the next chapter, we are going to learn how to use the ARUco  module to create an awesome augmented reality application using OpenCV  on our mobile devices.
+
+
 
 # Chapter 07 Android Camera Calibration and AR Using ArUco Module
 
 
+
+Mobile devices running Google's Android outnumber all other mobile  OSes and, in recent years, they have featured incredible computing power alongside high-quality cameras, which allows them to perform computer  vision at the highest levels. One of the most sought after applications  for mobile computer vision is **augmented reality** **(AR)**. Blending real and virtual worlds has applications in entertainment and  gaming, medicinel and healthcare, industry and defense, and many more.  The world of mobile AR is advancing quickly, with new compelling demos  popping up daily, and it is undeniably an engine for mobile hardware and software development. In this chapter, we will learn how to implement  an AR application from scratch in the Android ecosystem, by using  OpenCV's ArUco contrib module, **Android's Camera2 APIs**, as well as the **jMonkeyEngine 3D game engine**. However, first we will begin with simply calibrating our Android  device's camera using ArUco's ChArUco calibration board, which provides a more robust alternative to OpenCV's calib3d chessboards.
+
+The following topics will be covered in this chapter:
+
+- Introduction to light theory of camera intrinsic parameters and calibration process
+- Implementing camera calibration in Android using Camera2 APIs and ArUco
+- Implementing a *see-through* AR world with jMonkeyEngine and ArUco markers
+
+# Augmented reality and pose estimation
+
+Augmented reality (AR) is a concept coined in the early 1990s by Tom Caudell. He proposed AR as a mix between real-world rendering from a camera and computer generated graphics that smoothly blend together to create the illusion of virtual objects existing in the real world. In the past few decades, AR has made great strides, from an  eccentric technology with very few real applications, to a multi-billion industry in many verticals: defense, manufacturing, healthcare,  entertainment, and more. However, the core concept remains the same (in  camera-based AR): register graphics on top of 3D geometry in the scene.  Thus, AR has ultimately been about 3D geometry reconstruction from  images, tracking this geometry, and 3D graphics rendering registered to  the geometry. Other types of augmented reality use different sensors  than the camera. One of the most well known examples is AR performed  with the gyroscope and compass on a mobile phone, such as in the Pokemon Go app.
+
+
+
+In the past, AR was mostly based on using **fiducial markers**, clearly contrasting (mostly black and white), usually rectangular printed  markers (see examples of such markers in the following section). The  reason for using them was that they can be found easily in the image,  for they are high contrast, and they have four (or more) clear corners by which we can calculate the plane of the marker with respect  to the camera. This has been the practice since the very first AR  applications of the 90s, and it is still a highly used method today in  many AR technology prototypes. This type of AR detection will be used in this chapter, but, nowadays AR technology has shifted toward other 3D  geometry reconstruction methods, such as **natural markers** (non-rectangular, mostly unstructured), **structure-from-motion (SfM)**, and **mapping-and-tracking** (also known as **simultaneous localization and mapping** (**SLAM** )).
+
+One other reason for the meteoric rise of AR in recent years is the  advent of mobile computing. While in the past, rendering 3D graphics and running complex computer vision algorithms required a powerful PC,  today even low-end mobile devices can tackle both tasks with ease.  Today's mobile GPUs and CPUs are powerful enough to process much more  demanding tasks than fiducial-based AR. Major mobile OS developers, such as Google and Apple, already offer AR toolkits based on SfM and SLAM,  with inertial sensors fusion that operate at speeds greater than  real-time. AR is also being incorporated into other mobile devices, such as head-worn displays, cars, and even flying drones equipped with  cameras.
+
+# Camera calibration
+
+In our vision task at hand, recovering geometry in the scene, we will employ the **pinhole camera model**, which is a big simplification of the way images are acquired in our  advanced digital cameras. The pinhole model essentially describes the  transformation of world objects to pixels in the camera images. The  following diagram illustrates this process:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/2a7510cc-1f45-4000-8aa5-a32d84d4283f.png)
+
+Camera images have a local 2D coordinate frame (in pixels), while the location of 3D objects in the world are described in arbitrary units of length, such as millimeters, meters, or inches. To reconcile these two  coordinate frames, the pinhole camera model offers two transforms: **p****erspective projection** and **camera pose**. The camera pose transform (denoted *P* in the preceding diagram) aligns the coordinates of the objects with  the local coordinate frame of the camera, for example, if an object is  right in front of the camera's optical axis at 10 meters away, its  coordinates become 0, 0, 10 at meters scale. The pose (a rigid  transform) is composed of a rotation *R* and translation *t* components, and results in a new 3D position aligned with the camera's local coordinate frame as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a8b3e2b5-89d8-41bd-b818-b866e3a92614.png)
+
+Where *W*' are the **homogenous coordinates** of the 3D point *W*, obtained by adding a one to the end of the vector. 
+
+The next step is to project the aligned 3D points onto the image  plane. Intuitively, in the preceding diagram we can see the aligned 3D  point and the 2D pixel point exist on a ray from the camera center,  which imposes an overlapping right triangles (90-degree) constraint. It therefore means if we know the *z* coordinate and the *f* coefficient, we can calculate the point on the image plane (*x*I,*y*I) by dividing by *z;* this is called the **perspective divide**. First, we divide by *z* to bring the point to normalized coordinates (distance one from the  camera projection center), then we multiply it by a factor that  correlates the real camera's focal length and the size of pixels on the  image plane. Finally, we add the offset from the camera's center of  projection (**principal point**) to end up at the pixel position:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/207bf812-5fe7-4bce-b501-17592407a37b.png)
+
+In reality, there are more factors for determining the positions of  objects in the image than simply the focal length, such as distortion  from the lens (**radial, barrel distortion**), that involve non-linear calculations. This projection transformation is often expressed in a single matrix, known as the **camera intrinsic parameters matrix** and usually denoted by *K*:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/0161536f-7162-4b36-bd8b-1fc0135b69d7.png)
+
+The process of **camera calibration** is the process of finding the coefficients of *K* (and the **distortion parameters**), which is a fundamental step for any precise work in computer vision. It is usually done by way of an optimization problem given measurements of correlated 3D and 2D points. Given enough corresponding image points (*x*I, *y*I) and 3D points (*u*, *v*, *w*), one can construct a **re-projection** cost functor such as the following:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/4dc015ba-26b4-46f5-9430-eae5dcd0f8ff.png)
+
+The re-projection cost function here looks to minimize the Euclidean distance between the original 2D image point ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/ffb040ea-51ae-4386-96a6-36eafea1b434.png) and the 3D image as re-projected on the scene using the projection and pose matrices: ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/99ed9f35-5a69-4e3c-bd09-385c9b451634.png).
+
+Starting from approximate values for the *K* matrix (the principal point can be, for example, the exact center of the image), we can estimate the values of *P* in a direct linear fashion by setting up an over-constrained linear system, or an algorithm, such as **Point-n-Perspective (PnP)**. Then, we can proceed iteratively using the gradient over *L* with regards to to the parameters of *K* to slowly improve them until convergence, using a gradient descent algorithm such as **Levenberg-Marquardt**. The details of these algorithms are beyond the scope of this chapter;  however, they are implemented in OpenCV for the purpose of camera  calibration.
+
+# Augmented reality markers for planar reconstruction
+
+AR fiducial markers are used for their convenience in finding the plane they lie on with regards to the camera. An AR marker usually has strong corners or other geometric features (for example, circles) that are clearly and quickly detectable. The 2D landmarks are arranged in a way that is  pre-known to the detector, so we can easily establish 2D-3D point  correspondence. The following are examples of AR fiducial markers:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/52416ce3-127b-4364-821d-916f90395fe2.png)
+
+In this example, there are several types of 2D landmarks. In the  rectangular markers, these are the corners of the rectangles and the  inner rectangles, while in the QR code (middle), these are the three big boxed rectangles. The non-rectangular markers are using the center of  the circles as the 2D positions.
+
+Given our 2D points on the marker and their paired 3D  coordinates (in millimeters), we can write the following equation for  each pair, using the principles we saw in the last section:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/91d634c8-8c01-46ca-a935-8cffce9c3a8e.png)
+
+Notice that since the marker is flat and, without loss of generality, it exists on the ground plane, its *z*-coordinate is zero, and we can therefore omit the third column of the *P* matrix. We are left with a 3 x 3 matrix to find. Note we can still  recover the entire rotation matrix; since it is orthonormal, we can use  the first two columns to find the third by a cross product: ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/0610aa0d-16c6-40bd-b6d4-ea48253ea151.png). The remaining 3 x 3 matrix is a **homography**; it transforms between one plane (image plane) and another (marker  plane). We can estimate the values of the matrix by constructing a  system of homogeneous linear equations, as follows:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/8b27ab6b-5d76-4de4-a362-e3e2756406a9.png)
+
+Which can be worked into the following homogenous system of equations:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/1434ee95-9e25-4e10-9c84-87d3bbbe6157.png)
+
+
+
+
+
+We can solve this problem by taking the **singular value decomposition** of the *A* matrix, ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/0605ee3b-5069-4133-a24a-c74acf1238e3.png), and the last column of *V* as the solution, and we can find *P*. This will only work with a planar marker, because of our flatness  assumption from before. For calibration with 3D objects, more  instrumentation of the linear system is needed in order to recover a  valid orthonormal rotation. Other algorithms also exist, such as the **Perspective-n-Point** (**PnP**) algorithm we mentioned earlier. This concludes the theoretical  underpinning we will need for creating an augmented reality effect. In  the next chapter, we will begin constructing an application in Android  to implement these ideas.
+
+# Camera access in Android OS
+
+Most, if not all, mobile phone devices running Android are equipped  with a video-capable camera, and the Android OS provides APIs to access  the raw data stream from it. Up until Android version 5 (API level 21),  Google recommended using the older Camera API; however, in recent  versions, the API was deprecated in favor of the new Camera2 API, which  we will use. A good example guide for using the Camera2 API is provided  for Android developers by Google: https://github.com/googlesamples/android-Camera2Basic. In this section, we will only recount a few important elements, and the complete code can be viewed in the accompanying repository.
+
+First, using the camera requires user permissions. In the AndroidManifest.xml file, we flag the following:
+
+```
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+```
+
+We also request file storage access for saving intermediate data or  debugging images. The next step is to request permissions from the user, if not already granted earlier, with an on-screen dialog as soon as the application starts:
+
+```
+if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+    context.requestPermissions(new String[] { Manifest.permission.CAMERA }, REQUEST_PERMISSION_CODE);
+    return; // break until next time, after user approves
+}
+```
+
+Note that some further instrumentation is needed to handle the return from the permissions request. 
+
+# Finding and opening the camera
+
+Next, we try to find a suitable back-facing camera by scanning the  list of available cameras on the device. A characteristics flag is given to the camera if it's back-facing, as follows:
+
+```
+CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+try {
+    String camList[] = manager.getCameraIdList();
+    mCameraID = camList[0]; // save as a class member - mCameraID
+    for (String cameraID : camList) {
+        CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraID);
+        if(characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
+            mCameraID = cameraID;
+            break;
+        }
+    }
+    Log.i(LOGTAG, "Opening camera: " + mCameraID);
+    CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraID);
+    manager.openCamera(mCameraID, mStateCallback, mBackgroundHandler);
+} catch (...) {
+    /* ... */
+}
+```
+
+When the camera is opened, we look through the list of available  image resolutions and pick a good size. A good size will be something  not too big, so calculation won't be lengthy, and a resolution that  corresponds with the screen resolution, so it covers the entire screen:
+
+```
+final int width = 1280; // 1280x720 is a good wide-format size, but we can query the 
+final int height = 720; // screen to see precisely what resolution it is.
+
+CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraID);
+StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+int bestWidth = 0, bestHeight = 0;
+final float aspect = (float)width / height;
+for (Size psize : map.getOutputSizes(ImageFormat.YUV_420_888)) {
+    final int w = psize.getWidth(), h = psize.getHeight();
+    // accept the size if it's close to our target and has similar aspect ratio
+    if ( width >= w && height >= h &&
+         bestWidth <= w && bestHeight <= h &&
+         Math.abs(aspect - (float)w/h) < 0.2 ) 
+    {
+        bestWidth = w;
+        bestHeight = h;
+    }
+}
+```
+
+We're now ready to request access to the video feed. We will be  requesting access to the raw data coming from the camera. Almost all  Android devices will provide a YUV 420 stream, so it's good practice to  target that format; however, we will need a conversion step to get RGB  data, as follows:
+
+```
+mImageReader = ImageReader.newInstance(mPreviewSize.getWidth(), mPreviewSize.getHeight(), ImageFormat.YUV_420_888, 2);
+// The ImageAvailableListener will get a function call with each frame
+mImageReader.setOnImageAvailableListener(mHandler, mBackgroundHandler);
+
+mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
+
+mCameraDevice.createCaptureSession(Arrays.asList(mImageReader.getSurface()),
+        new CameraCaptureSession.StateCallback() {
+            @Override
+            public void onConfigured( CameraCaptureSession cameraCaptureSession) {
+                mCaptureSession = cameraCaptureSession;
+                // ... setup auto-focus here
+                mHandler.onCameraSetup(mPreviewSize); // notify interested parties
+            }
+
+            @Override
+            public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
+                Log.e(LOGTAG, "createCameraPreviewSession failed");
+            }
+        }, mBackgroundHandler);
+```
+
+From this point on, our class that implements ImageReader.OnImageAvailableListener will be called with each frame and we can access the pixels:
+
+```
+@Override
+public void onImageAvailable(ImageReader imageReader) {
+    android.media.Image image = imageReader.acquireLatestImage();
+    
+    //such as getting a grayscale image by taking just the Y component (from YUV)
+    mPreviewByteBufferGray.rewind();
+    ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+    buffer.rewind();
+    buffer.get(mPreviewByteBufferGray.array());
+    
+    image.close(); // release the image - Important!
+}
+```
+
+At this point, we can send the byte buffer for processing in OpenCV.  Next up, we will develop the camera calibration process with the aruco module.
+
+
+
+# Camera calibration with ArUco
+
+To perform camera calibration as we discussed earlier, we must obtain corresponding 2D-3D point pairings. With ArUco marker detection, this  task is made simple. ArUco provides a tool to create a **calibration board**, a grid of squares and AR markers, in which all the parameters are  known: number, size, and position of markers. We can print such a board  with our home or office printer, with the image for printing supplied by the ArUco API: 
+
+```
+Ptr<aruco::Dictionary> dict = aruco::Dictionary::get(aruco::DICT_ARUCO_ORIGINAL);
+Ptr<aruco::GridBoard> board = aruco::GridBoard::create(
+    10     /* N markers x */, 
+    7      /* M markers y */, 
+    14.0f  /* marker width (mm) */, 
+    9.2f   /* marker separation (mm) */, 
+    dict);
+Mat boardImage;
+board->draw({1000, 700}, boardImage, 25); // an image of 1000x700 pixels
+cv::imwrite("ArucoBoard.png", boardImage);
+```
+
+Here is an example of such a board image, a result of the preceding code:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/82002cc3-7171-411e-94c9-3869a0b3737f.png)
+
+We need to obtain multiple views of the board by moving either the  camera or the board. It is handy to paste the board on a piece of rigid  cardboard or plastic to keep the paper flat while moving the board, or  keep it flat on a table while moving the camera around it. We can  implement a very simple Android UI for capturing the images with just  three buttons, CAPTURE, CALIBRATE, and DONE:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e7542adb-36d4-4472-8174-9cc52c26f945.png)
+
+The CAPTURE button simply grabs the grayscale image buffer, as we saw earlier, and calls a native C++  function to detect the ArUco markers and save them to memory:
+
+```
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_packt_masteringopencv4_opencvarucoar_CalibrationActivity_addCalibration8UImage(
+    JNIEnv *env,
+    jclass type,
+    jbyteArray data_, // java: byte[] , a 8 uchar grayscale image buffer
+    jint w,
+    jint h) 
+{
+    jbyte *data = env->GetByteArrayElements(data_, NULL);
+    Mat grayImage(h, w, CV_8UC1, data);
+
+    vector< int > ids;
+    vector< vector< Point2f > > corners, rejected;
+
+    // detect markers
+    aruco::detectMarkers(grayImage, dict, corners, ids, params, rejected);
+    __android_log_print(ANDROID_LOG_DEBUG, LOGTAG, "found %d markers", ids.size());
+
+    allCorners.push_back(corners);
+    allIds.push_back(ids);
+    allImgs.push_back(grayImage.clone());
+    imgSize = grayImage.size();
+
+    __android_log_print(ANDROID_LOG_DEBUG, LOGTAG, "%d captures", allImgs.size());
+
+    env->ReleaseByteArrayElements(data_, data, 0);
+
+    return allImgs.size(); // return the number of captured images so far
+}
+```
+
+Here is an example of ArUco marker boards detected using the previous function. A visualization of the detected markers can be achieved with cv::aruco::drawDetectedMarkers. Points from the markers that were detected properly will be used for calibration:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/4b9d577f-5a8b-465b-937b-e33b54094dc6.png)
+
+
+
+After obtaining enough images (around 10 images from various viewpoints is usually sufficient), the CALIBRATE button calls another native function that runs the aruco::calibrateCameraAruco function, with the saved arrays of point correspondences as follows:
+
+```
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_packt_masteringopencv4_opencvarucoar_CalibrationActivity_doCalibration(
+    JNIEnv *env,
+    jclass type) 
+{
+    vector< Mat > rvecs, tvecs;
+
+    cameraMatrix = Mat::eye(3, 3, CV_64F);
+    cameraMatrix.at< double >(0, 0) = 1.0;
+
+    // prepare data for calibration: put all marker points in a single array
+    vector< vector< Point2f > > allCornersConcatenated;
+    vector< int > allIdsConcatenated;
+    vector< int > markerCounterPerFrame;
+    markerCounterPerFrame.reserve(allCorners.size());
+    for (unsigned int i = 0; i < allCorners.size(); i++) {
+        markerCounterPerFrame.push_back((int)allCorners[i].size());
+        for (unsigned int j = 0; j < allCorners[i].size(); j++) {
+            allCornersConcatenated.push_back(allCorners[i][j]);
+            allIdsConcatenated.push_back(allIds[i][j]);
+        }
+    }
+
+    // calibrate camera using aruco markers
+    double arucoRepErr;
+    arucoRepErr = aruco::calibrateCameraAruco(allCornersConcatenated, 
+                                              allIdsConcatenated,
+                                              markerCounterPerFrame, 
+                                              board, imgSize, cameraMatrix,
+                                              distCoeffs, rvecs, tvecs,                                                                                   CALIB_FIX_ASPECT_RATIO);
+
+    __android_log_print(ANDROID_LOG_DEBUG, LOGTAG, "reprojection err: %.3f", arucoRepErr);
+    stringstream ss;
+    ss << cameraMatrix << endl << distCoeffs;
+    __android_log_print(ANDROID_LOG_DEBUG, LOGTAG, "calibration: %s", ss.str().c_str());
+
+    // save the calibration to file
+    cv::FileStorage fs("/sdcard/calibration.yml", FileStorage::WRITE);
+    fs.write("cameraMatrix", cameraMatrix);
+    fs.write("distCoeffs", distCoeffs);
+    fs.release();
+}
+```
+
+The DONE button will advance the application to AR mode, where the calibration values are used for pose estimation.
+
+# Augmented reality with jMonkeyEngine
+
+Having calibrated the camera, we can proceed with implementing our AR application. We will make a very simple application that only shows a  plain 3D box on top of the marker, using the **jMonkeyEngine** (**JME**) 3D rendering suite. JME is very feature-rich, and full-blown games are  implemented using it (such as Rising World); we could extend our AR  application into a real AR game with additional work. When looking over  this chapter, the code needed to create a JME application is much more  extensive than what we will see here, and the full code is available in  the book's code repository.
+
+To start, we need to provision JME to show the view from the camera  behind the overlaid 3D graphics. We will create a texture to store the  RGB image pixels, and a quad to show the texture. The quad will be  rendered by an **orthographic** camera (without perspective), since it's a simple 2D image without depth.
+
+The following code will create a Quad, a simple, flat,  four-vertex 3D object that will hold the camera view texture and stretch it to cover the whole screen. Then, a Texture2D object will be attached to the Quad, so we can replace it with new images as they arrive. Lastly, we will create a Camera with orthographic projection and attach the textured Quad to it:
+
+```
+// A quad to show the background texture
+Quad videoBGQuad = new Quad(1, 1, true);
+mBGQuad = new Geometry("quad", videoBGQuad);
+final float newWidth = (float)screenWidth / (float)screenHeight;
+final float sizeFactor = 0.825f;
+
+// Center the Quad in the middle of the screen.
+mBGQuad.setLocalTranslation(-sizeFactor / 2.0f * newWidth, -sizeFactor / 2.0f, 0.f);
+
+// Scale (stretch) the width of the Quad to cover the wide screen.
+mBGQuad.setLocalScale(sizeFactor * newWidth, sizeFactor, 1);
+
+// Create a new texture which will hold the Android camera preview frame pixels.
+Material BGMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+mCameraTexture = new Texture2D();
+BGMat.setTexture("ColorMap", mCameraTexture);
+mBGQuad.setMaterial(BGMat);
+
+// Create a custom virtual camera with orthographic projection
+Camera videoBGCam = cam.clone();
+videoBGCam.setParallelProjection(true);
+// Create a custom viewport and attach the quad
+ViewPort videoBGVP = renderManager.createMainView("VideoBGView", videoBGCam);
+videoBGVP.attachScene(mBGQuad);
+```
+
+Next, we set up a virtual **perspective** Camera to show the graphic augmentation. It's important to use the calibration parameters we obtained earlier so that the virtual and real cameras  align. We use the **focal length** parameter from the calibration to set the **frustum** (view trapezoid) of the new Camera object, by converting it to the **field-of-view (FOV)** angle in degrees:
+
+```
+Camera fgCam = new Camera(settings.getWidth(), settings.getHeight());
+fgCam.setLocation(new Vector3f(0f, 0f, 0f));
+fgCam.lookAtDirection(Vector3f.UNIT_Z.negateLocal(), Vector3f.UNIT_Y);
+
+// intrinsic parameters
+final float f = getCalibrationFocalLength();
+
+// set up a perspective camera using the calibration parameter
+final float fovy = (float)Math.toDegrees(2.0f * (float)Math.atan2(mHeightPx, 2.0f * f));
+final float aspect = (float) mWidthPx / (float) mHeightPx;
+fgCam.setFrustumPerspective(fovy, aspect, fgCamNear, fgCamFar);
+```
+
+The camera is situated at the origin, facing the *-z* direction, and pointing up the *y*-axis, to match the coordinate frame from OpenCV's pose estimation algorithms.
+
+Finally, the running demo shows the virtual cube over the background image, covering the AR marker preciesly:
+
+![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/877ea509-3b86-42ea-9b57-af2e168d51e2.png)
+
+
+
+# Summary
+
+This chapter introduced two key topics in computer vision: camera  calibration and camera/object pose estimation. We saw the theoretical  background for achieving these concepts in practice, as well as their  implementation in OpenCV using the aruco contrib module.  Finally, we built an Android application that runs the ArUco code in  native functions to calibrate the camera and then detect the AR marker.  We used the jMonkeyEngine 3D rendering engine to create a very simple  augmented reality application using ArUco calibration and detection.
+
+In the next chapter, we will see how to use OpenCV in an iOS app  environment to build a panorama stitching application. Using OpenCV in a mobile environment is a very popular feature of OpenCV, as the library  provides pre-built binaries and releases for both Android and iOS.
 
 # Chapter 8 iOS Panoramas with the Stitching Module
 
@@ -1011,6 +5088,22 @@ The following topics will be covered in this chapter:
 - OpenCV's image stitching module and its functions
 - Building a Swift iOS application UI for panorama capturing
 - Integrating OpenCV component written in Objective C++ with the Swift application
+
+
+
+# Technical requirements
+
+The technologies and softwares used in this chapter are the following:
+
+- OpenCV v3 or v4 Android SDK compiled with the ArUco contrib module: https://github.com/Mainvooid/opencv-android-sdk-with-contrib
+- Android Studio v3.2+
+- Android device running Android OS v6.0+
+
+Build instructions for these components, as well as the code to  implement the concepts presented in this chapter, will be provided in  the accompanying code repository.
+
+To run the examples, a printed calibration board is required. The board image can be generated programmatically with the ArUco cv::aruco::CharucoBoard::draw function, and can then be printed using a home printer. The board works best if it is glued to a hard surface, such as a cardboard or plastic sheet. After printing  the board, precise measurements of the board marker's size should be  taken (with a ruler or caliper), to make the calibration results more  accurate and true to the real world.
+
+The code for this chapter can be accessed through GitHub: https://github.com/PacktPublishing/Mastering-OpenCV-4-Third-Edition/tree/master/Chapter_07.
 
 ## Technical requirements
 
