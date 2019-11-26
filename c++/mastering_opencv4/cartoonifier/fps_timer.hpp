@@ -38,8 +38,8 @@ public:
             pt = cv::Point2d(10, im.rows-20);        
         else
             pt = p;
-        sprintf(str, "%d frames/sec", (int)cv::cvRound(fps));
-        string text = str;
+        sprintf(str, "%d frames/sec", (int)cvRound(fps));
+        std::string text = str;
         cv::putText(im, text, pt, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar::all(255));
     }
 };

@@ -24,7 +24,7 @@ int m_stickFigureIterations = 0;
 
 void initCamera(cv::VideoCapture &videoCapture, char *cameraNumber) {
     try {
-        if(isdigit(cameraNumber[0]) {
+        if(isdigit(cameraNumber[0])) {
             videoCapture.open(atoi(cameraNumber));
         }
     } catch(cv::Exception &e) {}
@@ -44,13 +44,13 @@ void initCamera(cv::VideoCapture &videoCapture, char *cameraNumber) {
 }
  
 void onKeyPress(char key) {
-    swith(key) {
+    switch(key) {
     case 's': 
         m_sketchMode = !m_sketchMode;
         std::cout << "Sketch / Paint Mode:" << m_sketchMode << std::endl;
         break;
     case 'a':
-        m_alineMode = !m_alineMode;
+        m_alienMode = !m_alienMode;
         std::cout << "Alien / Human Mode:" << m_alienMode << std::endl;
         if(m_alienMode) {
             m_stickFigureIterations = NUM_STICK_FIGURE_ITERATIONS;
@@ -68,7 +68,7 @@ void onKeyPress(char key) {
 }
 
 
-int main(int argc, char *argv) {
+int main(int argc, char **argv) {
     std::cout << "Converts real-life images to cartoon-like images." << std::endl;
     std::cout << "Compiled with OpenCV version " << CV_VERSION << std::endl;
     std::cout << "usage:   " << argv[0] << " [[camera_number] desired_width desired_height ]" << std::endl;
@@ -76,7 +76,7 @@ int main(int argc, char *argv) {
     std::cout << std::endl;
 
     std::cout << "Keyboard commands (press in the GUI window):" << std::endl;
-    std::cout << "    Esc:  Quit the program." << std::endl;
+    std::cout << "  Esc:  Quit the program." << std::endl;
     std::cout << "    s:    change Sketch / Paint mode." << std::endl;
     std::cout << "    a:    change Alien / Human mode." << std::endl;
     std::cout << "    e:    change Evil / Good character mode." << std::endl;
@@ -111,7 +111,7 @@ int main(int argc, char *argv) {
     camera.set(cv::CAP_PROP_FRAME_HEIGHT, desiredCameraHeight);
     
     namedWindow(windowName, cv::WINDOW_NORMAL);
-    cv::setWindowProperty(windowName, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    // cv::setWindowProperty(windowName, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
     
     fps_timer timer;
     
@@ -122,7 +122,7 @@ int main(int argc, char *argv) {
             std::cerr << "ERROR: Couldn't grab the next camera frame." << std::endl;
             exit(1);
         }
-        cv::Mat displayedFrame = cv::Mat(cameraFrame.size, CV_8UC3);
+        cv::Mat displayedFrame = cv::Mat(cameraFrame.size(), CV_8UC3);
         auto debugType = 0;
         if(m_debugMode) {
             debugType = 2;

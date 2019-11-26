@@ -1,14 +1,16 @@
 #include "cartoon.hpp"
 
-void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienMode, bool evilMode, int debugType) {
+void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienMode, bool evilMode, int debugType) 
+{
     cv::Mat srcGray;
     cv::cvtColor(srcColor, srcGray, cv::COLOR_BGR2GRAY);
     cv::medianBlur(srcGray, srcGray, 7);
     cv::Size size = srcColor.size();
-    cv::Mat mask = cv::Mat(size, cv::CV_8U);
-    cv::Mat edges = cv::Mat(size, cv::CV_8U);
+    cv::Mat mask = cv::Mat(size, CV_8U);
+    cv::Mat edges = cv::Mat(size, CV_8U);
     if(!evilMode) {
-        cv::Laplacian(srcGray, edges, cv::CV_8U, 5);
+        cv::Laplacian(srcGray, edges, CV_8U, 5);
+        // cv::imshow("Laplacian", edges);
         cv::threshold(edges, mask, 80, 255, cv::THRESH_BINARY_INV);
         removePepperNoise(mask);
     } else {
@@ -17,7 +19,7 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
         cv::Scharr(srcGray, edges2, CV_8U, 1, 0, -1);
         edges += edges2;
         cv::threshold(edges, mask, 12, 255, cv::THRESH_BINARY_INV);
-        cv::mediaBlur(mask, mask, 3);
+        cv::medianBlur(mask, mask, 3);
     }
 
     if(sketchMode) {
@@ -43,13 +45,79 @@ void cartoonifyImage(cv::Mat srcColor, cv::Mat dst, bool sketchMode, bool alienM
     if(alienMode) {
         changeFacialSkinColor(smallImg, edges, debugType);
     }
-    cv::resize(smallImg, srcColor, size, 0, 0, cv::INTER_LIENAR);
-    cv::memset((char*)dst.data, 0, dst.step*dst.rows);
+    cv::resize(smallImg, srcColor, size, 0, 0, cv::INTER_LINEAR);
+    memset((char*)dst.data, 0, dst.step*dst.rows); // in c or c++
     srcColor.copyTo(dst, mask);
 }
 
-void removePepperNoise(cv::Mat &mask) {
-    for(auto y=2; y<mask.rows-2; y++) {
+void changeFacialSkinColor(cv::Mat smallImgBGR, cv::Mat bigEdges, int debugType)
+{
+        cv::Mat yuv = cv::Mat(smallImgBGR.size(), CV_8UC3);
+        cv::cvtColor(smallImgBGR, yuv, cv::COLOR_BGR2YCrCb);
+
+        // The floodFill mask has to be 2 pixels wider and 2 pixels taller than the small image.
+        // The edge mask is the full src image size, so we will shrink it to the small size,
+        // storing into the floodFill mask data.
+        int sw = smallImgBGR.cols;
+        int sh = smallImgBGR.rows;
+        cv::Mat maskPlusBorder = cv::Mat::zeros(sh+2, sw+2, CV_8U);
+        cv::Mat mask = maskPlusBorder(cv::Rect(1,1,sw,sh));  // mask is a ROI in maskPlusBorder.
+        cv::resize(bigEdges, mask, smallImgBGR.size());
+
+        cv::threshold(mask, mask, 80, 255, cv::THRESH_BINARY);
+        cv::dilate(mask, mask, cv::Mat());
+        cv::erode(mask, mask, cv::Mat());
+        // cv::imshow("constraints for floodFill", mask);
+
+        // YCrCb Skin detector and color changer using multiple flood fills into a mask.
+        // Apply flood fill on many points around the face, to cover different shades & colors of the face.
+        // Note that these values are dependent on the face outline, drawn in drawFaceStickFigure().
+        int const NUM_SKIN_POINTS = 6;
+        cv::Point skinPts[NUM_SKIN_POINTS];
+        skinPts[0] = cv::Point(sw/2,          sh/2 - sh/6);
+        skinPts[1] = cv::Point(sw/2 - sw/11,  sh/2 - sh/6);
+        skinPts[2] = cv::Point(sw/2 + sw/11,  sh/2 - sh/6);
+        skinPts[3] = cv::Point(sw/2,          sh/2 + sh/16);
+        skinPts[4] = cv::Point(sw/2 - sw/9,   sh/2 + sh/16);
+        skinPts[5] = cv::Point(sw/2 + sw/9,   sh/2 + sh/16);
+        // Skin might be fairly dark, or slightly less colorful.
+        // Skin might be very bright, or slightly more colorful but not much more blue.
+        const int LOWER_Y = 60;
+        const int UPPER_Y = 80;
+        const int LOWER_Cr = 25;
+        const int UPPER_Cr = 15;
+        const int LOWER_Cb = 20;
+        const int UPPER_Cb = 15;
+        cv::Scalar lowerDiff = cv::Scalar(LOWER_Y, LOWER_Cr, LOWER_Cb);
+        cv::Scalar upperDiff = cv::Scalar(UPPER_Y, UPPER_Cr, UPPER_Cb);
+        // Instead of drawing into the "yuv" image, just draw 1's into the "maskPlusBorder" image, so we can apply it later.
+        // The "maskPlusBorder" is initialized with the edges, because floodFill() will not go across non-zero mask pixels.
+        cv::Mat edgeMask = mask.clone();    // Keep an duplicate copy of the edge mask.
+        for (auto i=0; i<NUM_SKIN_POINTS; i++) {
+            const int flags = 4 | cv::FLOODFILL_FIXED_RANGE | cv::FLOODFILL_MASK_ONLY;
+            cv::floodFill(yuv, maskPlusBorder, skinPts[i], cv::Scalar(), NULL, lowerDiff, upperDiff, flags);
+            if (debugType >= 1)
+                cv::circle(smallImgBGR, skinPts[i], 5, CV_RGB(0, 0, 255), 1, cv::LINE_AA);
+        }
+
+        if (debugType >= 1)
+            cv::imshow("flood mask", mask*120); 
+
+        // After the flood fill, "mask" contains both edges and skin pixels, whereas
+        // "edgeMask" just contains edges. So to get just the skin pixels, we can remove the edges from it.
+        mask -= edgeMask;
+        // "mask" now just contains 1's in the skin pixels and 0's for non-skin pixels.
+
+        auto Red = 0;
+        auto Green = 70;
+        auto Blue = 0;
+        cv::add(smallImgBGR, cv::Scalar(Blue, Green, Red), smallImgBGR, mask);
+}
+
+
+void removePepperNoise(cv::Mat &mask) 
+{
+    for (auto y = 2; y < mask.rows-2; y++) {
         uchar *pThis = mask.ptr(y);
         uchar *pUp1 = mask.ptr(y-1);
         uchar *pUp2 = mask.ptr(y-2);
@@ -62,10 +130,10 @@ void removePepperNoise(cv::Mat &mask) {
         pDown1 += 2;
         pDown2 += 2;
 
-        for(auto x=2; x<mask.rows-2; x++) {
+        for(auto x = 2; x < mask.rows-2; x++) {
             uchar v = *pThis;
             if(v == 0) {
-                bool AllAbove = *(pUp2-2) && *(pUp2-1) && *(pUp2) && *(pUp2+1) && *(pUp2+2);
+                bool allAbove = *(pUp2-2) && *(pUp2-1) && *(pUp2) && *(pUp2+1) && *(pUp2+2);
                 bool allLeft = *(pUp1 - 2) && *(pThis - 2) && *(pDown1 - 2);
                 bool allBelow = *(pDown2 - 2) && *(pDown2 - 1) && *(pDown2) && *(pDown2 + 1) && *(pDown2 + 2);
                 bool allRight = *(pUp1 + 2) && *(pThis + 2) && *(pDown1 + 2);
@@ -92,18 +160,18 @@ void removePepperNoise(cv::Mat &mask) {
             pUp2++;
             pDown1++;
             pDown2++;
-        }
-                
+        }       
     }     
 }
 
-void drawFaceStickFigure(Mat dst) {
+void drawFaceStickFigure(cv::Mat dst) 
+{
     cv::Size size = dst.size();
     int sw = size.width;
     int sh = size.height;
 
     cv::Mat faceOutline = cv::Mat::zeros(size, CV_8UC3);
-    cv::Scalar color = cv::CV_RGB(255, 255, 0);
+    cv::Scalar color = CV_RGB(255, 255, 0);
     auto thickness = 4;
     int faceH = sh/2 * 70/100;
     int faceW = faceH * 72/100;
@@ -116,9 +184,9 @@ void drawFaceStickFigure(Mat dst) {
     auto eyeYshift = 11;
     
     // draw top, bottom of right eye, draw top bottom of left eye
-    cv::ellipse(faceOutline, cv::point(sw/2 - eyeX, sh/2 - eyeY), cv::Size(eyeW, eyeH), 0, 
-        180+eyeA, 360-eyeA, color, thickness, LINE_AA);
-    cv::ellipse(faceOutline, cv::Point(sw/2 - eyeX, sh/2 - eyeY - eyeYshift), cv::Size(eyeW, eyeH), 0, 0+eyeA, 180-eyeA, color, thickness, LINE_AA);
+    cv::ellipse(faceOutline, cv::Point(sw/2 - eyeX, sh/2 - eyeY), cv::Size(eyeW, eyeH), 0, 
+        180+eyeA, 360-eyeA, color, thickness, cv::LINE_AA);
+    cv::ellipse(faceOutline, cv::Point(sw/2 - eyeX, sh/2 - eyeY - eyeYshift), cv::Size(eyeW, eyeH), 0, 0+eyeA, 180-eyeA, color, thickness, cv::LINE_AA);
         
     int mouthY = faceH * 53/100;
     int mouthW = faceW * 45/100;
@@ -128,7 +196,7 @@ void drawFaceStickFigure(Mat dst) {
     auto fontFace = cv::FONT_HERSHEY_COMPLEX;
     auto fontScale = 1.0f;
     auto fontThickness = 2;
-    cv::putText(faceOutline, "Put your face here", cv::Point(sw * 23/100, sh * 10/100), fontFace, fontScale, color, fontThickness, LINE_AA);
+    cv::putText(faceOutline, "Put your face here", cv::Point(sw * 23/100, sh * 10/100), fontFace, fontScale, color, fontThickness, cv::LINE_AA);
     
     addWeighted(dst, 1.0, faceOutline, 0.7, 0, dst, CV_8UC3);
 }
