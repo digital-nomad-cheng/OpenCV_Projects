@@ -989,7 +989,7 @@ In the next chapter, we are going to learn how to use **multiple view stereo** (
 
 # Chapter 02 Explore Structure from Motion with the SfM Module
 
-# Explore Structure from Motion with the SfM Module
+### Explore Structure from Motion with the SfM Module
 
 **Structure from motion** (**SfM**) is the  process of recovering both the positions of cameras looking at a scene,  and the sparse geometry of the scene. The motion between the cameras  imposes geometric constraints that can help us recover the *structure* of objects, hence why the process is called SfM. Since OpenCV v3.0+, a contributed ("contrib") module called sfm was added, which assists in performing end-to-end SfM processing from  multiple images. In this chapter, we will learn how to use the SfM  module to reconstruct a scene to a sparse point cloud, including camera  poses. Later, we will also *densify* the point cloud, adding many more points to it to make it dense by using an open **Multi-View Stereo** (**MVS**) package called OpenMVS. SfM is used for high-quality three-dimensional  scanning, visual odometry for autonomous navigation, aerial photo  mapping, and many more applications, making it one of the most  fundamental pursuits within computer vision. Computer vision engineers  are expected to be familiar with the core concepts of SfM, and the topic is regularly taught in computer vision courses.
 
@@ -1437,7 +1437,7 @@ In the next chapter, we will see how to use OpenCV's face contrib module to dete
 
 # Chapter 03 Face Landmark and Pose with the Face Module
 
-# Face Landmark and Pose with the Face Module
+### Face Landmark and Pose with the Face Module
 
 Face landmark detection is the process of finding points of interest  in an image of a human face. It recently saw a spur of interest in the  computer vision community, as it has many compelling applications; for  example, detecting emotion through facial gestures, estimating gaze  direction, changing facial appearance (**face swap**),  augmenting faces with graphics, and puppeteering of virtual characters.  We can see many of these applications in today's smartphones and PC  web-camera programs. To achieve these applications, the landmark  detector must find dozens of points on the face, such as corners of the  mouth, corners of eyes, the silhouette of the jaws, and many more. To  that end, many algorithms were developed, and a few were implemented in  OpenCV. In this chapter, we will discuss the process of face landmark  (also known as **facemark**) detection using the cv::face module, which provides an API for inference, as well as training of a  facemark detector. We will see how to apply the facemark detector to  locating the direction of the face in 3D.
 
@@ -1447,9 +1447,7 @@ The following topics will be covered in this chapter:
 - Utilizing OpenCV's face module for face landmark detection
 - Estimating the approximate direction of the face by leveraging 2D–3D information
 
-
-
-# Technical requirements
+### Technical requirements
 
 The following technologies and installations are required to build the code in this chapter:
 
@@ -1468,9 +1466,7 @@ Image reproduced under Creative Commons license
 
 The code files for this book can be downloaded from https://github.com/PacktPublishing/Mastering-OpenCV-4-Third-Edition. 
 
-
-
-# Theory and context
+### Theory and context
 
 Facial landmark detection algorithms automatically  find the locations of key landmark points on facial images. Those key  points are usually prominent points locating a facial component, such as eye corner or mouth corner, to achieve a higher-level understanding of  the face shape. To detect a decent range of facial expressions, for  example, points around the jawline, mouth, eyes, and eyebrows are  needed. Finding facial landmarks proves to be a difficult task for a  variety of reasons: great variation between subjects, illumination  conditions, and occlusions. To that end, computer vision researchers  proposed dozens of landmark detection algorithms over the past three  decades.
 
@@ -1480,21 +1476,21 @@ A recent survey of facial landmark detection (Wu and Ji, 2018)  suggests separat
 - **CLM methods** examine *local* patches around each landmark in combination with a global model
 - **Regression methods** iteratively try to predict landmark locations using a cascade of small updates learned by regressors
 
-# Active appearance models and constrained local models
+### Active appearance models and constrained local models
 
 A canonical example of a holistic method is the **active appearance model** (**AAM**) from the late '90s, usually attributed to the work of T.F. Cootes  (1998). In AAM, the goal is to iteratively match a known face rendering  (from the training data) to the target input image, which upon  convergence gives the shape, and thus, landmarks. The AAM method and its derivatives were extremely popular, and still take up a fair share of  attention. However AAM's successor, CLM methods, have shown far better  performance under illumination changes and occlusions, and rapidly took  the lead. Mostly attributed to the work of Cristinacce and Cootes (2006) and Saragih et al. (2011), CLM methods model the pixel intensity  appearance of each landmark locally (patch), as well as incorporating a  global shape beforehand to cope with occlusions and false local  detections.
 
-CLMs can be generally described as looking to minimize, where *p* is a facial shape *pose* that can be decomposed to its *D* landmark ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/5603301a-3941-4f41-9e16-c4b4b7a87e8f.png) points, as follows:
+CLMs can be generally described as looking to minimize, where *p* is a facial shape *pose* that can be decomposed to its *D* landmark $x_d(p)$ points, as follows:
 
-![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/3ff7cca2-1efd-4445-839d-840760456c3e.png)
+$$\hat{p} = arg min_{p} Q(p) + \sum_{d=1}^D Distance(x_d(p), I)$$
 
-Facial poses are primarily obtained by way of **principal component analysis** (**PCA**), and the landmarks are the result of the inverse PCA operation. Using  PCA is useful, since most facial shape poses are strongly correlated,  and the full landmark position space is highly redundant. A distance  function (denoted ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/f3c190a7-6fc3-4923-b5e1-7a7533b95529.png)) is used to determine how close a given landmark model point is to the image observation ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/4583eb8b-49f4-49dd-ba0e-0a85655b0f07.png). In many cases, the distance function is a patch-to-patch similarity  measure (template matching), or usage of edge-based features, such as  the **histogram of gradients** (**HOG**). The term ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/bfe9d149-5b1e-463a-9aba-50cda6203960.png) is used for regularization over improbable or extreme face shape poses.
+Facial poses are primarily obtained by way of **principal component analysis** (**PCA**), and the landmarks are the result of the inverse PCA operation. Using  PCA is useful, since most facial shape poses are strongly correlated,  and the full landmark position space is highly redundant. A distance  function (denoted $Distace$) is used to determine how close a given landmark model point is to the image observation $I$. In many cases, the distance function is a patch-to-patch similarity  measure (template matching), or usage of edge-based features, such as  the **histogram of gradients** (**HOG**). The term $Q(P)$is used for regularization over improbable or extreme face shape poses.
 
-# Regression methods
+### Regression methods
 
-In contrast, *regression methods* employ a more simplistic, but powerful approach. These methods use machine learning, by way of regression, an *update step* to an initial positioning of the landmarks and iterate until the positions converge, where ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/f3d96a24-1849-46fc-a3b1-dfe99b3d2862.png) is the shape at time *t*, and ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/588f0d0c-f7f5-4d18-bd0b-c24ab02fd805.png) is the result of running the regressor *r* on the image *I* and the current shape, demonstrated as follows:
+In contrast, *regression methods* employ a more simplistic, but powerful approach. These methods use machine learning, by way of regression, an *update step* to an initial positioning of the landmarks and iterate until the positions converge, where $\hat{S}^{(t)}$  is the shape at time *t*, and $r_t(I, \hat{S}^{(t)})$  is the result of running the regressor *r* on the image *I* and the current shape, demonstrated as follows:
 
-![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/602f1f37-379f-4918-9e59-254e8b61b288.png)
+$$\hat{s}^{(S+1)} = \hat{s}^{(t)} + r_t(I, \hat{S}^{(t)})$$
 
  By cascading these update operations, the final landmark positions are obtained.
 
@@ -1504,13 +1500,13 @@ There are yet newer approaches to facial landmark detection,  utilizing deep lea
 
 OpenCV's face module (first introduced in OpenCV v3.0)  that contains implementations for AAM, Ren et al. (2014) and Kazemi et  al. (2014) regression type methods. In this chapter, we will employ Ren  et al.'s (2014) method, since it presents the best results given the  pre-trained model provided by the contributors. Ren et al.'s method  learns the best **local binary features** (**LBF**), a very short binary code that describes the visual appearance around a point for each landmark, as well as to learn the shape update step by regression.
 
-# Facial landmark detection in OpenCV
+### Facial landmark detection in OpenCV
 
 Landmark detection starts with **face detection**,  finding faces in the image and their extents (bounding boxes). Facial  detection has long been considered a solved problem, and OpenCV contains one of the first robust face detectors freely available to the public.  In fact, OpenCV, in its early days, was majorly known and used for its  fast face detection feature, implementing the canonical Viola-Jones  boosted cascade classifier algorithm (Viola et al. 2001, 2004), and  providing a pre-trained model. While face detection has grown much since those early days, the fastest and easiest method for detecting faces in OpenCV is still to use the bundled cascade classifiers, by means of the cv::CascadeClassifier class provided in the core module.
 
 We implement a simple helper function to detect faces with the cascade classifier, shown as follows:
 
-```
+```c++
 void faceDetector(const Mat& image,
                   std::vector<Rect> &faces,
                   CascadeClassifier &face_cascade) {
@@ -1543,7 +1539,7 @@ We may want to tweak the two parameters that govern the face  detection: pyramid
 
 We must initialize the cascade classifier from the OpenCV-provided  models (XML files of the serialized models are provided in the $OPENCV_ROOT/data/haarcascades directory). We use the standard trained classifier on frontal faces, demonstrated as follows:
 
-```
+```c++
 const string cascade_name = "$OPENCV_ROOT/data/haarcascades/haarcascade_frontalface_default.xml";
 
 CascadeClassifier face_cascade;
@@ -1570,12 +1566,10 @@ A visualization of the results of the face detector is shown in the following sc
 
 The facemark detector will work around the detected faces, beginning  at the bounding boxes. However, first we must initialize the cv::face::Facemark object, demonstrated as follows:
 
-```
+```c++
 #include <opencv2/face.hpp>
 
 using namespace cv::face;
-
-// ...
 
 const string facemark_filename = "data/lbfmodel.yaml";
 Ptr<Facemark> facemark = createFacemarkLBF();
@@ -1585,7 +1579,7 @@ cout << "Loaded facemark LBF model" << endl;
 
 The cv::face::Facemark abstract API is used for all the  landmark detector flavors, and offers base functionality for  implementation for inference and training according to the specific  algorithm. Once loaded, the facemark object can be used with its fit function to find the face shape, shown as follows:
 
-```
+```c++
 vector<Rect> faces;
 faceDetector(img, faces, face_cascade);
 
@@ -1609,11 +1603,11 @@ A visualization of the results of the landmark detector (using cv::face::drawFac
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e054c050-ae89-4c01-abea-9f75b80e0324.png)
 
-# Measuring error
+### Measuring error
 
-Visually, the results seem very good. However, since we have the  ground truth data, we may elect to analytically compare it to the  detection and get an error estimate. We can use a standard mean  Euclidean distance metric (![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/053ee1bd-3206-4a0b-98ee-338f8952b8ae.png)) to tell how close each predicted landmark is to the ground truth on average:
+Visually, the results seem very good. However, since we have the  ground truth data, we may elect to analytically compare it to the  detection and get an error estimate. We can use a standard mean  Euclidean distance metric: $$\frac{1}{n} \sum_i^n ||x_i - \hat{y}_i||_{L_2}$$ to tell how close each predicted landmark is to the ground truth on average:
 
-```
+```c++
 float MeanEuclideanDistance(const vector<Point2f>& A, const vector<Point2f>& B) {
     float med = 0.0f;
     for (int i = 0; i < A.size(); ++i) {
@@ -1629,23 +1623,23 @@ A visualization of the results with the prediction (red) and ground truth (green
 
 We can see the average error over all landmarks is roughly only one pixel for these particular video frames.
 
-# Estimating face direction from landmarks
+### Estimating face direction from landmarks
 
 Having obtained the facial landmarks, we can attempt to find the direction of the face. The 2D face landmark points essentially conform to the shape of the head. So, given a 3D  model of a generic human head, we can find approximate corresponding 3D  points for a number of facial landmarks, as shown in the following  photo:
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/17c938f6-b7c5-4116-bbe3-69aa6410f16c.png)
 
-# Estimated pose calculation
+### Estimated pose calculation
 
 From these 2D–3D correspondences, we can calculate 3D pose (rotation  and translation) of the head, with respect to the camera, by way of the **Point-n-Perspective** (**PnP**) algorithm. The details of the algorithm and object pose detection are beyond the  scope of this chapter; however, we can quickly rationalize why just a  handful of 2D–3D point correspondences are suffice to achieve this. The  camera that took the preceding picture has a **rigid**  transformation, meaning it has moved a certain distance from the object, as well as rotated somewhat, with respect to it. In very broad terms,  we can then write the relationship between points on the image (near the camera) and the object as follows:
 
-![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cc171f7a-6863-43f4-a9c0-90355fe2d447.png)
+$$ \begin{pmatrix}x \\ y \\ 1 \end{pmatrix} = s\begin{pmatrix} fx & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1\end{pmatrix} \begin{pmatrix}r1 & r2 & r3 & t1 \\ r4 & r5 & r6 & t2 \\ r7 & r8 & r9 & t3 \end{pmatrix} \begin{pmatrix} U \\ V \\ W \\ 1\end{pmatrix}$$
 
-This is an equation where ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c7d1b45b-23f9-4387-b6a1-d1d7f192d1cf.png) are the object's 3D position, and ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/62257b13-28fa-41d9-b9e8-0841d59c42d7.png) are points in the image. This equation also includes a projection, governed by the camera intrinsic parameters (focal length *f* and center point *c*), that transforms the 3D points to 2D image points, up to scale *s*. Say we are given the intrinsic parameters by calibrating the camera, or we  approximate them, we are left to find 12 coefficients for the rotation  and translation. If we had enough 2D and 3D corresponding points, we can write a system of linear equations, where each point can contribute two equations, to solve for all of these coefficients. In fact, it was shown that we  don't need six points, since the rotation has less than nine degrees of  freedom, we can make do with just four points. OpenCV provides an  implementation to find the rotation and translation with its cv::solvePnP functions of the calib3d module.
+This is an equation where $U, V, W$ are the object's 3D position, and $x, y$ are points in the image. This equation also includes a projection, governed by the camera intrinsic parameters (focal length *f* and center point *c*), that transforms the 3D points to 2D image points, up to scale *s*. Say we are given the intrinsic parameters by calibrating the camera, or we  approximate them, we are left to find 12 coefficients for the rotation  and translation. If we had enough 2D and 3D corresponding points, we can write a system of linear equations, where each point can contribute two equations, to solve for all of these coefficients. In fact, it was shown that we  don't need six points, since the rotation has less than nine degrees of  freedom, we can make do with just four points. OpenCV provides an  implementation to find the rotation and translation with its cv::solvePnP functions of the `calib3d` module.
 
 We line up the 3D and 2D points and employ cv::solvePnP:
 
-```
+```c++
 vector<Point3f> objectPoints {
         {8.27412, 1.33849, 10.63490},    //left eye corner
         {-8.27412, 1.33849, 10.63490},   //right eye corner
@@ -1666,13 +1660,11 @@ solvePnP(objectPoints, points2d, K, Mat(), rvec, tvec, true);
 
 The *K* matrix for the camera intrinsics we estimate from size the preceding image.
 
-
-
-# Projecting the pose on the image
+### Projecting the pose on the image
 
 After obtaining the rotation and translation, we project four points  from the object coordinate space to the preceding image: tip of the  nose, *x* axis direction, *y* axis direction, and *z* axis direction, and draw the arrows in the preceding image:
 
-```
+```c++
 vector<Point3f> objectPointsForReprojection {
         objectPoints[2],                   // tip of nose
         objectPoints[2] + Point3f(0,0,15), // nose and Z-axis
@@ -1693,7 +1685,7 @@ This results in a visualization of the direction the face is pointing, as shown 
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/c66452fc-e374-48e1-9cc8-98300814965a.png)
 
-# Summary
+### Summary
 
 In this chapter, we learned how to use OpenCV's face contrib module and the cv::Facemark API to detect facial landmarks in the image, and then use the landmarks with cv::solvePnP() to find the approximate direction of the face. The APIs are simple and  straightforward, but pack a powerful punch. With knowledge of landmark  detection, many exciting applications can be implemented, such as  augmented reality, face swap, identification, and puppeteering.
 
