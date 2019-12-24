@@ -7,7 +7,7 @@ int main(int argc, char **argv)
 {
      
     // Read input image
-    cv::Mat im = cv::imread("headPose.jpg");
+    cv::Mat im = cv::imread("resources/headPose.jpg");
      
     // 2D image points. If you change the image, you need to change vector
     std::vector<cv::Point2d> image_points;
