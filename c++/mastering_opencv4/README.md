@@ -91,6 +91,7 @@
    ```
 
 4. Estimating face direction from landmarks
+   [more simple explanation](https://www.learnopencv.com/head-pose-estimation-using-opencv-and-dlib/)
    + opencv calib3d: cv::solvePnP
    + camera focal length can be estimed by the image width
    + camera focal center can be estimed by the image center
@@ -125,8 +126,18 @@
    
    cv::solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
    ```
-5. boost
+5. boost format
+   [boost format doc](https://www.boost.org/doc/libs/1_54_0/libs/format/doc/format.html)
    ```c++
    using $ = boost::format
+   str($("MED: %.3f") % calMeanEuclideanDistance(shapes[0], ground_truth))
    ```
 
+## Chapter 05
+1. car plate recognition procedure
+   ![procedure.jpg](https://www.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/e525e709-4de5-4d38-8ead-5c5d9cdf5e45.png)
+   + segmentation
+   + feature extraction
+   + classification
+
+2. 

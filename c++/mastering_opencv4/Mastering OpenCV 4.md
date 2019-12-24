@@ -1691,7 +1691,7 @@ In this chapter, we learned how to use OpenCV's face contrib module and the cv::
 
 # Chapter 04 Number Plate Recognition with Deep Convolutional Networks
 
-# Number Plate Recognition with Deep Convolutional Networks
+### Number Plate Recognition with Deep Convolutional Networks
 
 This chapter introduces us to the steps needed to create an application for **Automatic Number Plate Recognition** (**ANPR**). There are different approaches and techniques based on different  situations; for example, an infrared camera, fixed car position, and  light conditions. We can proceed to construct an ANPR application to  detect automobile license plates in a photograph taken between two and  three meters from a car, in ambiguous light conditions, and with a  non-parallel ground with minor perspective distortions in the  automobile's plate.
 
@@ -1701,9 +1701,7 @@ The main purpose of this chapter is to  introduce us to image segmentation and f
 - Plate detection
 - Plate recognition
 
-
-
-# Introduction to ANPR
+### Introduction to ANPR
 
 ANPR, sometimes known by other terms, such as **Automatic License Plate Recognition** (**ALPR**), **Automatic Vehicle Identification** (**AVI**), or **car plate recognition** (**CPR**), is a surveillance method that uses **optical character recognition** (**OCR**) and other methods such as segmentation and detection to read vehicle registration plates.
 
