@@ -37,7 +37,6 @@ public:
     }
 
 private:
-    const int scale = 6;
 
     cv::Point2f m_point;
     cv::KalmanFilter m_kalman;
@@ -122,7 +121,7 @@ int main(int argc, char** argv) {
     std::vector<PointState> trackPoints;
     trackPoints.reserve(68);
     
-    const int scale  = 6;
+    const int scale  = 1;
     while(cap.read(frame)) {
         std::vector<cv::Rect> faces;
         cv::cvtColor(frame, currGray, cv::COLOR_BGR2GRAY);        
@@ -134,13 +133,13 @@ int main(int argc, char** argv) {
             if (prevGray.empty()) {
                 trackPoints.clear();
                 for (cv::Point2f lp: landmarks[0]) {
-                    cv::Point2f pt = cv::Point2f(lp.x/6, lp.y/6);
+                    cv::Point2f pt = cv::Point2f(lp.x/scale, lp.y/scale);
                     trackPoints.emplace_back(pt);
                 } 
             } else {
                 if (trackPoints.empty()) {
                     for (cv::Point2f lp: landmarks[0]) {
-                        cv::Point2f pt = cv::Point2f(lp.x/6, lp.y/6);
+                        cv::Point2f pt = cv::Point2f(lp.x/scale, lp.y/scale);
                         trackPoints.emplace_back(pt);
                     }
                 } else {
@@ -173,8 +172,8 @@ int main(int argc, char** argv) {
             for (const PointState& tp: trackPoints) {
                 std::cout << trackPoints.size() << std::endl; 
                 cv::Point2f pt = tp.getPoint();
-                pt.x *= 6;
-                pt.y *= 6;
+                pt.x *= scale;
+                pt.y *= scale;
                 cv::circle(frame, pt, 3, tp.isPredicted() ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 255, 0), cv::FILLED);
             }
 
