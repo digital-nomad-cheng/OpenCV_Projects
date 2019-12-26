@@ -1,5 +1,5 @@
-#ifndef OCR_h
-#define OCR_h
+#ifndef OCR_hpp
+#define OCR_hpp
 
 #include <string>
 #include <vector>
@@ -30,7 +30,7 @@ public:
     int classify(cv::Mat in);
     void train(cv::Mat train_data, cv::Mat train_label, int n_layers);
     int classifyKnn(cv::Mat in);
-    void trainKnn(cv::Mat train_samples, train_classes, int k);
+    void trainKnn(cv::Mat train_samples, cv::Mat train_labels, int k);
     cv::Mat features(cv::Mat intput, int size);
 
     bool DEBUG;
@@ -49,8 +49,8 @@ private:
                                                               cv::Mat low_data);
     cv::Mat projectHistogram(cv::Mat img, int t);
     bool verifySizes(cv::Mat in);
-    std::Ptr<cv::ml::ANN_MLP> ann;
-    std::Ptr<cv::ml::KNearest> knn;
+    cv::Ptr<cv::ml::ANN_MLP> ann;
+    cv::Ptr<cv::ml::KNearest> knn;
     cv::dnn::Net dnn_net;
     int K;
 };

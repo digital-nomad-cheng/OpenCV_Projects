@@ -1723,7 +1723,7 @@ This data is important for character  segmentation, since we can check both the 
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/07019619-1ecd-49d5-b697-15dd50ab3dd9.png)
 
-# ANPR algorithm
+### ANPR algorithm
 
 Before explaining the ANPR code, we need to  define the main steps and tasks in the ANPR algorithm. ANPR is divided  into two main steps, plate detection and plate recognition:
 
@@ -1751,7 +1751,7 @@ Aside from the main application, whose  purpose is to detect and recognize a car
 
 These tasks, however, can be  more important than the main application, because if we do not train the pattern recognition system correctly, our system can fail and not work  correctly; different patterns need different training and evaluation  processes. We need to evaluate our system with different environments,  conditions, and features to get the best results. These two tasks are  sometimes done together, since different features can produce different  results, which we can see in the evaluation section.
 
-# Plate detection
+### Plate detection
 
 In this step, we have to detect all the  plates in a current camera frame. To do this task, we divide it in to  two main steps: segmentation and segment classification. The feature  step is not explained because we use the image patch as a vector  feature.
 
@@ -1772,9 +1772,7 @@ The processes involved are as follows:
 - In red, possible detected plates (feature images)
 - Plates detected by SVM classifier
 
-
-
-# Segmentation
+### Segmentation
 
 Segmentation is the process of dividing an  image into multiple segments. This process is to simplify the image for  analysis and make feature extraction easier.
 
@@ -1782,7 +1780,7 @@ One important feature of plate segmentation  is the high number of vertical edge
 
 Before finding vertical edges, we need to  convert the color image to a grayscale image (because color can't help  us in this task) and remove possible noise generated from the camera or  other ambient noise. We will apply a 5x5 gaussian blur and remove noise. If we don't apply a noise removal method, we can get a lot of vertical  edges that produce fail detection:
 
-```
+```c++
 //convert image to gray 
 Mat img_gray; 
 cvtColor(input, img_gray, CV_BGR2GRAY); 
@@ -1791,7 +1789,7 @@ blur(img_gray, img_gray, Size(5,5));
 
 To find the vertical edges, we will use a Sobel filter and find the first horizontal derivate. The derivate is a mathematical  function that allows us to find vertical edges on an image. The  definition of the Sobel function in OpenCV is as follows:
 
-```
+```c++
 void Sobel(InputArray src, OutputArray dst, int ddepth, int xorder, int yorder, int ksize=3, double scale=1, double delta=0, int borderType=BORDER_DEFAULT )
 ```
 
@@ -1799,7 +1797,7 @@ Here, ddepth is the destination image depth; xorder is the order of the derivate
 
 Then, for our case, we can use xorder=1, yorder=0, and ksize=3:
 
-```
+```c++
 //Find vertical lines. Car plates have high density of vertical 
 lines 
 Mat img_sobel; 
@@ -1808,7 +1806,7 @@ Sobel(img_gray, img_sobel, CV_8U, 1, 0, 3, 1, 0);
 
 After applying a Sobel filter, we will apply a threshold filter to obtain a binary image with a threshold value obtained through Otsu's method. Otsu's algorithm needs an 8-bit  input image, and Otsu's method automatically determines the optimal  threshold value:
 
-```
+```c++
 //threshold image 
 Mat img_threshold; 
 threshold(img_sobel, img_threshold, 0, 255, CV_THRESH_OTSU+CV_THRESH_BINARY);
@@ -1822,19 +1820,19 @@ By applying a close morphological operation, we can remove blank spaces between 
 
 First, we will define our structural element to use in our morphological operation. We will use the getStructuringElement function to define a structural rectangular element with a 17 by 3 dimension size in our case; this may be different in other image sizes:
 
-```
+```c++
 Mat element = getStructuringElement(MORPH_RECT, Size(17, 3));
 ```
 
 Then, we will use this structural element in a close morphological operation using the morphologyEx function:
 
-```
+```c++
 morphologyEx(img_threshold, img_threshold, CV_MOP_CLOSE, element);
 ```
 
 After applying these functions, we have  regions in the image that could contain a plate; however, most of the  regions do not contain license plates. These regions can be split by  means of connected component analysis, or by using the findContours function. This last function retrieves the contours of a binary image with  different methods and results. We only need to get the external contours with any hierarchical relationship and any polygonal approximation  results:
 
-```
+```c++
 //Find contours of possibles plates 
  vector< vector< Point>> contours; 
  findContours(img_threshold, 
@@ -1845,7 +1843,7 @@ After applying these functions, we have  regions in the image that could contain
 
 For each contour detected, extract the bounding rectangle of minimal area. OpenCV brings up the minAreaRect function for this task. This function returns a rotated RotatedRect rectangle class. Then, using a vector iterator over each contour, we can get the  rotated rectangle and make some preliminary validations before we  classify each region:
 
-```
+```c++
 //Start to iterate to each contour founded 
  vector<vector<Point>>::iterator itc= contours.begin(); 
  vector<RotatedRect> rects; 
@@ -1866,7 +1864,7 @@ For each contour detected, extract the bounding rectangle of minimal area. OpenC
 
 We make basic validations for the regions  detected based on their area and aspect ratio. We will consider that a  region can be a plate if the aspect ratio is approximately *520/110 = 4.727272* (plate width divided by plate height), with an error margin of 40% and an area based on a minimum of 15 pixels and a maximum of 125 pixels for the height of the plate. These values are calculated depending on the image size and camera position:
 
-```
+```c++
 bool DetectRegions::verifySizes(RotatedRect candidate ){ 
     float error=0.4; 
     //Spain car plate size: 52x11 aspect 4,7272 
@@ -1898,7 +1896,7 @@ The first step to crop the license plate is  to get several seeds near the last 
 
 We want to select the white region, and we need several seeds to touch at least one white pixel. Then, for each seed, we use a floodFill function to draw a new mask image to store the new closest cropping region:
 
-```
+```c++
 for(int i=0; i< rects.size(); i++){ 
  //For better rect cropping for each possible box 
  //Make floodFill algorithm because the plate has white background 
@@ -1931,7 +1929,7 @@ for(int i=0; i< rects.size(); i++){
 
 The floodFill function fills a  connected component with a color into a mask image starting from a point seed, and sets the maximum lower and upper brightness/color difference  between the pixel to fill and the pixel's neighbors or pixel seed:
 
-```
+```c++
 int floodFill(InputOutputArray image, InputOutputArray mask, Point seed, Scalar newVal, Rect* rect=0, Scalar loDiff=Scalar(), Scalar upDiff=Scalar(), int flags=4 )
 ```
 
@@ -1946,7 +1944,7 @@ CV_FLOODFILL_FIXED_RANGE sets the difference between the current pixel and the s
 
 Once we have a crop mask, we will get a  minimal area rectangle from the image mask points and check the validity size again. For each mask, a white pixel gets the position and uses  the minAreaRect function to retrieve the closest crop region:
 
-```
+```c++
 //Check new floodFill mask match for a correct patch. 
  //Get all points detected for get Minimal rotated Rect 
  vector<Point> pointsInterest; 
@@ -1963,7 +1961,7 @@ The segmentation process is finished, and we have valid regions. Now, we can cro
 
 First, we need to generate the transform matrix with getRotationMatrix2D to remove possible rotations in the detected region. We need to pay attention to height, because RotatedRect can be returned and rotated at 90 degrees. So, we have to check the rectangle aspect and, if it is less than 1, we need to rotate it by 90 degrees:
 
-```
+```c++
 //Get rotation matrix 
 float r= (float)minRect.size.width / (float)minRect.size.height; 
 float angle=minRect.angle; 
@@ -1974,7 +1972,7 @@ Mat rotmat= getRotationMatrix2D(minRect.center, angle,1);
 
 With the transform matrix, we now  can rotate the input image by an affine transformation (an affine  transformation preserves parallel lines) with the warpAffine function, where we set the input and destination images, the transform matrix,  the output size (same as the input in our case), and the interpolation  method to use. We can define the border method and border value if  required:
 
-```
+```c++
 //Create and rotate image 
 Mat img_rotated; 
 warpAffine(input, img_rotated, rotmat, input.size(), 
@@ -2013,9 +2011,7 @@ output.push_back(Plate(grayResult,minRect.boundingRect()));
 
 Now that we have possible detected regions, we have to classify whether each possible region is a plate or not. In the next section, we are going to learn how to create a classification based on SVM.
 
-
-
-# Classification
+### Classification
 
 After we preprocess and segment all possible parts of an image, we now need to decide whether each segment is (or is not) a license plate. To do this, we will use an SVM algorithm.
 
@@ -2097,11 +2093,11 @@ for(int i=0; i< posible_regions.size(); i++)
 } 
 ```
 
-# Plate recognition
+### Plate recognition
 
 The second step in license plate recognition aims  to retrieve the characters of the license plate with OCR. For each  detected plate, we proceed to segment the plate for each character and  use an **artificial neural network** machine learning  algorithm to recognize the character. Also, in this section, you will  learn how to evaluate a classification algorithm.
 
-# OCR segmentation
+### OCR segmentation
 
 First, we will obtain a plate image patch as an input to the OCR segmentation function with an equalized histogram.  We then need to apply only a threshold filter and use this threshold  image as the input of a Find contours algorithm. We can observe this process in the following image:
 
@@ -2109,7 +2105,7 @@ First, we will obtain a plate image patch as an input to the OCR segmentation fu
 
 This segmentation process is coded as follows:
 
-```
+```c++
 Mat img_threshold; 
 threshold(input, img_threshold, 60, 255, CV_THRESH_BINARY_INV); 
 if(DEBUG) 
@@ -2127,7 +2123,7 @@ We used the CV_THRESH_BINARY_INV parameter to invert the threshold output by tur
 
 For each detected contour, we can make a  size verification and remove all regions where the size is smaller or  the aspect is not correct. In our case, the characters have a 45/77  aspect, and we can accept a 35% error of aspect for rotated or distorted characters. If an area is higher than 80%, we will consider that region to be a black block and not a character. For counting the area, we can  use the countNonZero function, which counts the number of pixels with a value higher than zero:
 
-```
+```c++
 bool OCR::verifySizes(Mat r){ 
     //Char sizes 45x77 
     float aspect=45.0f/77.0f; 
@@ -2154,9 +2150,7 @@ bool OCR::verifySizes(Mat r){
 
 If a segmented character is verified, we  have to preprocess it to set the same size and position for all  characters, and save it in a vector with the auxiliary CharSegment class. This class saves the segmented character image and the position that we need to order the characters, because the find contour algorithm does  not return the contours in the correct order required.
 
-
-
-# Character classification using a convolutional neural network
+### Character classification using a convolutional neural network
 
 Before we start to work with a convolutional neural network and deep  learning, we are going to introduce these topics and the tools to create our DNN. 
 
@@ -2181,13 +2175,11 @@ OpenCV deep learning is not designed to train deep  learning models, and it's no
 
 Then, we are going to develop our CNN for OCR  classification in TensorFlow, which is one of the most frequently used  and popular software libraries for deep learning, originally developed  by Google researchers and engineers.
 
-
-
-# Creating and training a convolutional neural network with TensorFlow
+### Creating and training a convolutional neural network with TensorFlow
 
 This section will explore how to train a new TensorFlow model, but  before we start to create our model, we have to check our image dataset  and generate the resources that we need to train our models.
 
-# Preparing the data
+### Preparing the data
 
 We have 30 characters and numbers, distributed along 702 images in  our dataset with the following distribution. We can check that there are more than 30 images for numbers, but some letters such as **K**, **M**, and **P**, have fewer images samples:
 
@@ -2251,7 +2243,7 @@ The script generates test.tfrecords and train.tfrecords files, where the labels 
 
 Now, we have the datasets and we are ready to create our model and start to train and evaluate.
 
-# Creating a TensorFlow model
+### Creating a TensorFlow model
 
 TensorFlow is an open source software library that focuses on  high-performance numerical computation and deep learning with access and support to CPUs, GPUs, and TPUs (Tensor Process Units, new Google  hardware specialized for deep learning purposes). This library is not an easy library and has a high learning curve, but the introduction of  Keras (a library on top of TensorFlow) as a part of TensorFlow makes the learning curve easier, but still requires a huge learning curve itself. 
 
@@ -2306,10 +2298,6 @@ Here, the --logdir parameter, where we save our model and  checkpoints, must be 
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7c223d12-0a07-4ae7-a7f8-97a23e229e44.png)
 
-TensorBoard GRAPHS
-
-
-
 Or, we can explore the results obtained, such as for loss values in  each epoch step or accuracy metrics. The results obtained with the  training model per epoch are shown in the following screenshot:
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/fed89909-d63f-426f-8287-5365e9713f9c.png)
@@ -2326,9 +2314,7 @@ Analyzing the results obtained, we attain an accuracy level of around 96%, much 
 
 After we finish training, all models and variables are stored in the  job folder defined when we launched the TensorFlow script. Now, we have  to prepare the finished result to integrate and import it into OpenCV.
 
-
-
-# Preparing a model for OpenCV
+### Preparing a model for OpenCV
 
 TensorFlow generates multiple files when we train a new model,  generating files for events that store accuracy and loss, and other  metrics obtained in each step; also, some files will store the variable  results obtained for each step or checkpoint. These variables are the weights that networks learn in training. But it's not convenient to share all these  files in production, as OpenCV would not be able to manage them.  At the same time, there are nodes that are used only for training and  not for inference. We have to remove these nodes from the model, nodes  such as dropouts layers or training input iterators.
 
@@ -2360,7 +2346,7 @@ optimize_for_inference.py --input frozen_cut_graph.pb --output frozen_cut_graph_
 
 The output of this is a file called frozen_cut_graph_opt.pb. This file is our final model, which we can import and use in our OpenCV code.
 
-# Import and use model in OpenCV C++ code
+### Import and use model in OpenCV C++ code
 
 Importing a deep learning model into OpenCV is very easy; we can import models from TensorFlow, Caffe, Torch, and Darknet. All imports are very similar, but, in this chapter, we are going to learn how to import a TensorFlow model. 
 
@@ -2372,7 +2358,7 @@ dnn::Net dnn_net= readNetFromTensorflow("frozen_cut_graph_opt.pb");
 
 To classify each detected segment of our plate, we have to put each image segment into our dnn_net and obtain the probabilities. This is the full code to classify each segment:
 
-```
+```c++
 for(auto& segment : segments){
     //Preprocess each char for all images have same sizes
     Mat ch=preprocessChar(segment.img);
@@ -2396,7 +2382,7 @@ for(auto& segment : segments){
 
 We are going to explain this code a bit more. First, we  have to preprocess each segment to get the same-sized image with 20 x 20 pixels. This preprocessed image must be converted as a blob saved in a Mat structure. To convert it to a blob, we are going to use the blobFromImage function, which creates four-dimensional data with optional resize, scale, crop, or swap channel blue and red. The function has the following parameters:
 
-```
+```c++
 void cv::dnn::blobFromImage ( 
     InputArray image,
     OutputArray blob,
@@ -2430,7 +2416,7 @@ If we execute the application, we will obtain a result like this:
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/dec8a36c-c593-4a97-9513-4a089572ceb5.png)
 
-# Summary
+### Summary
 
 In this chapter, you learned how an Automatic Number Plate  Recognition program works and its two important steps: plate  localization and plate recognition.
 
@@ -2450,9 +2436,7 @@ In this chapter, we are going to learn the main techniques of face  detection an
 - Face recognition
 - Finishing touches
 
-
-
-# Introduction to face detection and face recognition
+### Introduction to face detection and face recognition
 
 Face recognition is the process of putting a label to a known face. Just like humans learn to recognize their  family, friends, and celebrities just by seeing their face, there are  many techniques for recognize a face in computer vision.
 
@@ -2475,7 +2459,7 @@ Face preprocessing aims to reduce these problems by making sure the  face always
 
 Despite the big claims about using face recognition for security in  the media, it is unlikely that the current face recognition methods  alone are reliable enough for any true security system. However, they  can be used for purposes that don't need high reliability, such as  playing personalized music for different people entering a room, or a  robot that says your name when it sees you. There are also various  practical extensions to face recognition, such as gender recognition,  age recognition, and emotion recognition.
 
-# Face detection
+### Face detection
 
 Until the year 2000, there were many different techniques used for finding faces, but all of them were either very slow, very  unreliable, or both. A major change came in 2001 when Viola and Jones  invented the Haar-based cascade classifier for object detection, and in  2002 when it was improved by Lienhart and Maydt. The result is an object detector that is both fast (it can detect faces in real time on a  typical desktop with a VGA webcam) and reliable (it detects  approximately 95 percent of frontal faces correctly). This object  detector revolutionized the field of face recognition (as well as that  of robotics and computer vision in general), as it finally allowed  real-time face detection and face recognition, especially as Lienhart  himself wrote the object detector that comes free with OpenCV! It works  not only for frontal faces but also side-view faces (referred to as  profile faces), eyes, mouths, noses, company logos, and many other  objects.
 
@@ -2487,9 +2471,7 @@ The basic idea of the Haar-based face detector is that if you look at most front
 
 Rather than have a person decide which comparisons would best define a face, both Haar and LBP-based face detectors can be automatically  trained to find faces from a large set of images, with the information  stored as XML files to be used later. These cascade classifier detectors are typically trained using at least 1,000 unique face images and  10,000 non-face images (for example, photos of trees, cars, and text),  and the training process can take a long time even on a multi-core  desktop (typically a few hours for LBP, but one week for Haar!).  Luckily, OpenCV comes with some pretrained Haar and LBP detectors for  you to use! In fact, you can detect frontal faces, profile (side-view)  faces, eyes, or noses just by loading different cascade classifier XML  files into the object detector and choosing between the Haar and LBP  detector, based on which XML file you choose.
 
-
-
-# Implementing face detection using OpenCV cascade classifiers
+### Implementing face detection using OpenCV cascade classifiers
 
 As mentioned previously, OpenCV v2.4 comes with various pretrained XML detectors that you can use for different purposes. The  following table lists some of the most popular XML files:
 
@@ -2510,7 +2492,7 @@ Haar-based detectors are stored in the data/haarcascades folder and LBP-based de
 
 For our face recognition project, we want to detect frontal faces, so let's use the LBP face detector because it is the fastest and doesn't  have patent licensing issues. Note that the pretrained LBP face detector that comes with OpenCV v2.x is not tuned as well as the pretrained Haar face detectors, so if you want more reliable face detection then you  may want to train your own LBP face detector or use a Haar face  detector.
 
-# Loading a Haar or LBP detector for object or face detection
+### Loading a Haar or LBP detector for object or face detection
 
 To perform object or face detection, first you must load the pretrained XML file using OpenCV's CascadeClassifier class as follows:
 
@@ -2533,11 +2515,11 @@ This can load Haar or LBP detectors just by giving a different  filename. A very
     }
 ```
 
-# Accessing the webcam
+### Accessing the webcam
 
 To grab frames from a computer's webcam, or even from a video file, you can simply call the VideoCapture::open() function with the camera number or video filename, then grab the frames using the C++ stream operator, as mentioned in the, *Accessing the webcam* section in [Chapter 1](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/692e59a0-da67-4f17-bcf1-9600e5b03d37.xhtml), *Cartoonifier and Skin Changer for Raspberry Pi*.
 
-# Detecting an object using the Haar or LBP classifier
+### Detecting an object using the Haar or LBP classifier
 
 Now that we have loaded the classifier  (just once during initialization), we can use it to detect faces in each new camera frame. But first, we should do some initial processing of  the camera image just for face detection by performing the following  steps:
 
@@ -2594,7 +2576,7 @@ We can easily perform histogram equalization to improve the contrast and brightn
     equalizeHist(inputImg, equalizedImg);
 ```
 
-# Detecting the face
+### Detecting the face
 
 Now that we have converted the image to grayscale, shrunk the image, and equalized the histogram, we are ready to detect the faces using the CascadeClassifier::detectMultiScale() function! There are many parameters, listed as follows, that we pass to this function:
 
@@ -2674,13 +2656,7 @@ The following photo shows the typical rectangular region given by the face detec
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/9d7e4f4a-bc86-4e6d-9497-b67dedb8b82a.jpg)
 
-- [Copy](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/7edb9b73-12a1-4f2f-9625-e0668b07fa0d.xhtml#)
-- [Add Highlight](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/7edb9b73-12a1-4f2f-9625-e0668b07fa0d.xhtml#)
-- [ 			Add Note 		](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/7edb9b73-12a1-4f2f-9625-e0668b07fa0d.xhtml#)
-
-
-
-# Implementing face detection using the OpenCV deep learning module
+### Implementing face detection using the OpenCV deep learning module
 
 From OpenCV 3.4, the deep learning module was available as a contrib source (https://github.com/opencv/opencv_contrib), but from version 4.0, deep learning is part of OpenCV core. This means  that OpenCV deep learning is stable and in good maintenance.
 
@@ -2717,7 +2693,7 @@ Finally, we can call to network to predict as follows:
 Mat detection = net.forward();
 ```
 
-# Face preprocessing
+### Face preprocessing
 
 As mentioned earlier, face recognition is extremely vulnerable to  changes in lighting conditions, face orientation, face expression, and  so on, so it is very important to reduce these differences as much as  possible. Otherwise, the face recognition algorithm will often think  there is more similarity between the faces of two different people in  the same conditions, than between two images of the same person.
 
@@ -2727,7 +2703,7 @@ The following photo shows an enlarged view of a typical preprocessed  face, usin
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/a14d1f47-aa18-4284-9d1b-390644ebcf82.png)
 
-# Eye detection
+### Eye detection
 
 Eye detection can be very useful  for face preprocessing, because for frontal faces, you can always assume a person's eyes should be horizontal and on opposite sides of the face, and should have a fairly standard position and size within a face,  despite changes in facial expressions, lighting conditions, camera  properties, distance to camera, and so on.
 
@@ -2750,7 +2726,7 @@ As the open or closed eye detectors specify  which eye they are trained on, you 
  If the XML filename says *left eye*, it means the  actual left eye of the person, so in the camera image it would normally  appear on the right-hand side of the face, not on the left-hand side!
  The list of four eye detectors mentioned is ranked in approximate order  from most reliable to least reliable, so if you know you don't need to  find people with glasses, then the first detector is probably the best  choice.
 
-# Eye search regions
+### Eye search regions
 
 For eye detection, it is important to crop  the input image to just show the approximate eye region, just like doing face detection and then cropping to just a small rectangle where the  left eye should be (if you are using the left eye detector), and the  same for the right rectangle for the right eye detector.
 
@@ -2846,7 +2822,7 @@ The following photos shows the face preprocessing *Step 1* to *Step 4* applied t
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/35c59dca-5b35-4b1d-a30e-78214fcfe201.png)
 
-# Geometrical transformation
+### Geometrical transformation
 
 It is important that the faces are all  aligned together, otherwise the face recognition algorithm might be  comparing part of a nose with part of an eye, and so on. The output of  the face detection we've just seen will give aligned faces to some  extent, but it is not very accurate (that is, the face rectangle will  not always be starting from the same point on the forehead).
 
@@ -2905,7 +2881,7 @@ Now, we can transform the face (rotate,  scale, and translate) to get the two de
     warpAffine(gray, warped, rot_mat, warped.size());
 ```
 
-# Separate histogram equalization for left and right sides
+### Separate histogram equalization for left and right sides
 
 In real-world conditions, it is common to  have strong lighting on one half of the face and weak lighting on the  other. This has an enormous effect on the face recognition algorithm, as the left- and right-hand sides of the same face will seem like very  different people. So, we will perform histogram equalization separately  on the left and right halves of the face, to have a standardized  brightness and contrast on each side of the face.
 
@@ -2970,7 +2946,7 @@ Now, we combine the three images together. As the images are small, we can easil
 
 This separated histogram equalization should significantly help  reduce the effect of different lighting on the left- and right-hand  sides of the face, but we must understand that it won't completely  remove the effect of one-sided lighting, since the face is a complex 3D  shape with many shadows.
 
-# Smoothing
+### Smoothing
 
 To reduce the effect of pixel noise, we  will use a bilateral filter on the face, as a bilateral filter is very  good at smoothing most of an image while keeping edges sharp. Histogram  equalization can significantly increase the pixel noise, so we will make the filter strength 20.0 to cover  heavy pixel noise, and use a neighborhood of just two pixels as we want  to heavily smooth the tiny pixel noise, but not the large image regions, as follows:
 
@@ -2979,7 +2955,7 @@ To reduce the effect of pixel noise, we  will use a bilateral filter on the face
     bilateralFilter(warped, filtered, 0, 20.0, 2.0);
 ```
 
-# Elliptical mask
+### Elliptical mask
 
 Although we have already removed most of  the image background, forehead, and hair when we did the geometrical  transformation, we can apply an elliptical mask to remove some of the  corner regions, such as the neck, which might be in shadow from the  face, particularly if the face is not looking perfectly straight toward  the camera. To create the mask, we will draw a black-filled ellipse onto a white image. One ellipse to perform this has a horizontal radius of  0.5 (that is, it covers the face width perfectly), a vertical radius of  0.8 (as faces are usually taller than they are wide), and centered at  the coordinates 0.5, 0.4, as shown in the following screenshot, where  the elliptical mask has removed some unwanted corners from the face:
 
@@ -3008,7 +2984,7 @@ The following enlarged screenshot shows a  sample result from all the face prepr
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/82e8577a-990f-4cfd-a6ea-654e04bc519e.png)
 
-# Collecting faces and learning from them
+### Collecting faces and learning from them
 
 Collecting faces can be just as simple as putting each newly preprocessed face into an array of preprocessed faces from the camera, as well as putting a  label into an array (to specify which person the face was taken from).  For example, you could use 10 preprocessed faces of the first person and 10 preprocessed faces of a second person, so the input to the face  recognition algorithm will be an array of 20 preprocessed faces, and an  array of 20 integers (where the first 10 numbers are 0 and the next 10  numbers are 1).
 
@@ -3021,7 +2997,7 @@ One way to obtain a good training set that  will cover many different real-world
 
 So, in general, having 100 training faces for each person is likely  to give better results than having just 10 training faces for each  person, but if all 100 faces look almost identical, then it will still  perform badly, because it is more important that the training set has  enough variety to cover the testing set, rather than to just have a  large number of faces. So, to make sure the faces in the training set  are not all too similar, we should add a noticeable delay between each  collected face. For example, if the camera is running at 30 frames per  second, then it might collect 100 faces in just several seconds when the person has not had time to move around, so it is better to collect just one face per second while the person moves their face around. Another  simple method to improve the variation in the training set is to only  collect a face if it is noticeably different from the previously  collected face.
 
-# Collecting preprocessed faces for training
+### Collecting preprocessed faces for training
 
 To make sure there is at least a one-second gap between collecting new faces, we need to measure how much time has passed. This is done as follows:
 
@@ -3089,7 +3065,7 @@ To make it more obvious to the user that we have added their current face to the
     displayedFaceRegion += CV_RGB(90,90,90);
 ```
 
-# Training the face recognition system from collected faces
+### Training the face recognition system from collected faces
 
 After you have collected enough faces for each person to recognize, you must train the system to learn the data using a  machine learning algorithm suited for face recognition. There are many  different face recognition algorithms in the literature, the simplest of which are Eigenfaces and artificial neural networks. Eigenfaces tends  to work better than ANNs, and despite its simplicity, it tends to work  almost as well as many more complex face recognition algorithms, so it  has become very popular as the basic face recognition algorithm for  beginners, as well as for new algorithms to be compared to.
 
@@ -3156,7 +3132,7 @@ model->train(preprocessedFaces, faceLabels);
 
 This one line of code will run the whole face  recognition training algorithm that you selected (for example,  Eigenfaces, Fisherfaces, or potentially other algorithms). If you have  just a few people with less than 20 faces, then this training should  return very quickly, but if you have many people with many faces, it is  possible that the train() function will take several seconds, or even minutes, to process all the data. 
 
-# Viewing the learned knowledge
+### Viewing the learned knowledge
 
 While it is not necessary, it is quite useful to view the internal  data structures that the face recognition algorithm generated when  learning your training data, particularly if you understand the theory  behind the algorithm you selected and want to verify it worked, or find  out why it is not working as you hoped. The internal data structures can be different for different algorithms, but luckily they are the same  for Eigenfaces and Fisherfaces, so let's just look at those two. They  are both based on 1D eigenvector matrices that appear somewhat like  faces when viewed as 2D images; therefore, it is common to refer to  eigenvectors as Eigenfaces when using the **Eigenface** algorithm or as Fisherfaces when using the **Fisherface** algorithm.
 
@@ -3203,9 +3179,7 @@ This tells you that it is 640 elements wide and 480 high (that is, a  640 x 480 
 It is also possible to print the actual contents of an image or matrix by using the printMat() function instead of the printMatInfo() function. This is quite handy for viewing matrices and multichannel-float  matrices, as these can be quite tricky to view for beginners.
  The ImageUtils code is mostly for  OpenCV's C interface, but is gradually including more of the C++  interface over time. The most recent version can be found at http://shervinemami.info/openCV.html.
 
-
-
-# Average face
+### Average face
 
 Both the Eigenfaces and Fisherfaces algorithms first calculate the  average face that is the mathematical average of all the training  images, so they can subtract the average image from each facial image to have better face recognition results. So, let's view the average face  from our training set. The average face is named mean in the Eigenfaces and Fisherfaces implementations, shown as follows:
 
@@ -3232,7 +3206,7 @@ The image will appear as shown in the following screenshot:
 Notice that averageFace (row) was a single-row matrix of 64-bit floats, whereas averageFace is a rectangular image with 8-bit pixels, covering the full range
  from 0 to 255.
 
-# Eigenvalues, Eigenfaces, and Fisherfaces
+### Eigenvalues, Eigenfaces, and Fisherfaces
 
 Let's view the actual component values in the Eigenvalues (as text), shown as follows:
 
@@ -3290,11 +3264,11 @@ The following screenshot displays eigenvectors as  images. You can see that for 
 
 Notice that both Eigenfaces and Fisherfaces seem to have a  resemblance to some facial features, but they don't really look like  faces. This is simply because the average face was subtracted from them, so they just show the differences for each Eigenface from the average  face. The numbering shows which Eigenface it is, because they are always ordered from the most significant Eigenface to the least significant  Eigenface, and if you have 50 or more Eigenfaces, then the later  Eigenfaces will often just show random image noise and therefore should  be discarded.
 
-# Face recognition
+### Face recognition
 
 Now that we have trained the Eigenfaces or  Fisherfaces machine learning algorithm with our set of training images  and face labels, we are finally ready to figure out who a person is,  just from a facial image! This last step is referred to as face  recognition or face identification.
 
-# Face identification – recognizing people from their faces
+### Face identification – recognizing people from their faces
 
 Thanks to OpenCV's FaceRecognizer class, we can identify the person in a photo simply by calling the FaceRecognizer::predict() function on a facial image
  as follows:
@@ -3307,7 +3281,7 @@ This identity value will be the label number that we originally used when collec
 
 The problem with this identification is that it will always predict  one of the given people, even if the input photo is of an unknown  person, or of a car. It would still tell you which person is the most  likely person in that photo, so it can be difficult to trust the result! The solution is to obtain a confidence metric so we can judge how  reliable the result is, and if it seems that the confidence is too low,  then we assume it is an unknown person.
 
-# Face verification—validating that it is the claimed person
+### Face verification—validating that it is the claimed person
 
 To confirm whether the result of the prediction is reliable or it should be taken as an unknown person, we perform **face verification** (also referred to as **face authentication**) to obtain a confidence metric showing whether the single face image is similar to the claimed person (as opposed to face  identification, which we just performed, comparing the single face image with many people).
 
@@ -3354,7 +3328,7 @@ We can now calculate how similar this reconstructed face is to the input face by
 
 Now, you can just print the identity to the console, or use it  wherever your imagination takes you! Remember that this face recognition method and this face verification method are only reliable in the  conditions that you train them for. So to obtain good recognition  accuracy, you will need to ensure that the training set of each person  covers the full range of lighting conditions, facial expressions, and  angles that you expect to test with. The face preprocessing stage helped reduce some differences with lighting conditions and in-plane rotation  (if the person tilts their head toward their left or right shoulder),  but for other differences, such as out-of-plane rotation (if the person  turns their head toward the left-hand side or right-hand side), it will  only work if it is covered well in your training set.
 
-# Finishing touches—saving and loading files
+### Finishing touches—saving and loading files
 
 You could potentially add a command-line-based method that processes  input files and saves them to disk, or even perform face detection, face preprocessing, and/or face recognition as a web service. For these  types of projects, it is quite easy to add the desired functionality by  using the save and load functions of the FaceRecognizer class. You may also want to save the trained data, and then load it on program startup.
 
@@ -3383,7 +3357,7 @@ For example, here is some sample code for loading the trained model  from a file
     }
 ```
 
-# Finishing touches—making a nice and interactive GUI
+### Finishing touches—making a nice and interactive GUI
 
 While the code given so far in this chapter is sufficient for a whole face recognition system, there still needs to be a way to put the data  into the system and a way to use it. Many face recognition systems for  research will choose the ideal input to be text files, listing where the static image files are stored on the computer, as well as other  important data, such as the true name or identity of the person, and  perhaps true pixel coordinates of regions of the face (such as the  ground truth of where the face and eye centers actually are). This would either be collected manually or by another face recognition system.
 
@@ -3401,7 +3375,7 @@ As we need the GUI to perform multiple tasks, let's create a set of  modes or st
 
 To quit, the user can hit the *Esc* key in the window at any time. Let's also add a Delete All mode that restarts a new face recognition system, and a Debug button that toggles the display of extra debug information. We can create an enumerated mode variable to show the current mode.
 
-# Drawing the GUI elements
+### Drawing the GUI elements
 
 To display the current mode on the screen, let's create a function to draw text easily. OpenCV comes with a cv::putText() function with several fonts and anti-aliasing, but it can be tricky to place the text in the location that you want. Luckily, there is also a cv::getTextSize() function to calculate the bounding box around the text, so we can create a wrapper function to make it easier to place text.
 
@@ -3475,7 +3449,7 @@ Now, we create several clickable GUI buttons using the drawButton() function,
 
 As we mentioned, the GUI program has some modes that it switches  between (as a finite state machine), beginning with the Startup mode. We will store the current mode as the m_mode variable.
 
-# Startup mode
+### Startup mode
 
 In the Startup mode, we just need to load the XML detector files to  detect the face and eyes and initialize the webcam, which we've already  covered. Let's also create a main GUI window with a mouse callback  function that OpenCV will call whenever the user moves or clicks their  mouse in our window. It may also be desirable to set the camera  resolution to something reasonable; for example, 640 x 480, if the  camera supports it. This is done as follows:
 
@@ -3494,7 +3468,7 @@ In the Startup mode, we just need to load the XML detector files to  detect the 
     m_mode = MODE_DETECTION;
 ```
 
-# Detection mode
+### Detection mode
 
 In the Detection mode, we want to continuously detect faces and eyes, draw rectangles or circles around them to show the detection result,  and show the current preprocessed face. In fact, we will want these to  be displayed no matter which mode we are in. The only thing special  about the Detection mode is that it will change to the next mode (*Collection*) when the user clicks the Add Person button.
 
@@ -3555,9 +3529,7 @@ The following screenshot shows the displayed GUI when in the  Detection mode. Th
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/7b8d5499-4318-4700-ac68-baf3b807e1d4.jpg)
 
-
-
-# Collection mode
+### Collection mode
 
 We enter the Collection mode when the user clicks on the Add Person button to signal that they want to begin collecting faces for a new person. As mentioned previously, we have limited the face collection to one face  per second, and then only if it has changed noticeably from the  previously collected face. And remember, we decided to collect not only  the preprocessed face, but also the mirror image of the preprocessed  face.
 
@@ -3616,7 +3588,7 @@ The following partial screenshot shows the typical display when faces for severa
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/05861018-bd48-4339-a8da-271d59e6be96.png)
 
-# Training mode
+### Training mode
 
 When the user finally clicks in the middle of the window, the face  recognition algorithm will begin training on all the collected faces.  But it is important to make sure there have been enough faces or people  collected, otherwise the program may crash. In general, this just  requires making sure there is at least one face in the training set  (which implies there is at least one person). But the Fisherfaces  algorithm looks for comparisons between people, so if there are less  than two people in the training set, it will also crash. So, we must  check whether the selected face recognition algorithm is Fisherfaces. If it is, then we require at least two people with faces, otherwise we  require at least one person with a face. If there isn't enough data,  then the program goes back to the Collection mode so the user can add  more faces before training.
 
@@ -3654,7 +3626,7 @@ To check there are at least two people with collected faces, we can make sure th
 
 The training may take a fraction of a second, or it may take several  seconds or even minutes, depending on how much data is collected. Once  the training of collected faces is complete, the face recognition system will automatically enter the *Recognition mode*.
 
-# Recognition mode
+### Recognition mode
 
 In the Recognition mode, a confidence meter is shown next to the preprocessed face, so the user knows how reliable the recognition is. If the confidence level is higher than the unknown  threshold, it will draw a green rectangle around the recognized person  to show the result easily. The user can add more faces for further  training if they click on the Add Person button or one of the existing people, which causes the program to return to the Collection mode.
 
@@ -3702,7 +3674,7 @@ The following partial screenshot shows a typical display when running in Recogni
 
 ![img](https://learning.oreilly.com/library/view/mastering-opencv-4/9781789533576/assets/cb02aeda-9a38-4c04-8fa9-42bbb5cca344.png)
 
-# Checking and handling mouse clicks
+### Checking and handling mouse clicks
 
 Now that we have all our GUI elements drawn, we need to process mouse events. When we initialized the display window, we told OpenCV that we  want a mouse event callback to our onMouse function.
 
@@ -3781,7 +3753,7 @@ To handle the Delete All button, we need to empty various data structures that a
     }
 ```
 
-# Summary
+### Summary
 
 This chapter has shown you all the steps required to create a  real-time face recognition application, with enough preprocessing to  allow some differences between the training set conditions and the  testing set conditions, just using basic algorithms. We used face  detection to find the location of a face within the camera image,  followed by several forms of face preprocessing to reduce the effects of different lighting conditions, camera and face orientations, and facial expressions.
 
@@ -3789,7 +3761,7 @@ We then trained an Eigenfaces or Fisherfaces machine learning system  with the p
 
 Rather than providing a command-line tool that processes image files  in an offline manner, we combined all the preceding steps into a  self-contained real-time GUI program to allow immediate use of the face  recognition system. You should be able to modify the behavior of the  system for your own purposes, such as to allow automatic login on your  computer, or if you are interested in improving recognition reliability, then you can read conference papers about recent advances in face  recognition to potentially improve each step of the program until it is  reliable enough for your specific needs. For example, you could improve  the face preprocessing stages, or use a more advanced machine learning  algorithm, or an even better face verification algorithm, based on  methods at [http://www.facerec.org/algorithms/](http://www.face-rec.org/algorithms/) and http://www.cvpapers.com.
 
-# References
+### References
 
 - *Rapid Object Detection Using a Boosted Cascade of Simple Features*, *P. Viola
    and M.J. Jones*, *Proceedings of the IEEE Transactions on CVPR 2001*, *Vol. 1*,

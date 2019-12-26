@@ -1,5 +1,5 @@
-#ifndef DetectRegions
-#define DetectRegions
+#ifndef DetectRegions_hpp
+#define DetectRegions_hpp
 
 #include <string>
 #include <vector>
@@ -23,6 +23,8 @@ public:
     
 private:    
    std::vector<Plate> segment(cv::Mat input);
-   bool verifySize(cv::RotatedRect mr);
+   bool verifySizes(cv::RotatedRect mr);
    cv::Mat histEq(cv::Mat in);
-#endif
+};
+
+#endif 

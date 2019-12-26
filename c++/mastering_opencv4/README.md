@@ -100,7 +100,7 @@
    std::vector<cv::Point2d> image_points;
    image_points.push_back( cv::Point2d(359, 391) );    // Nose tip
    image_points.push_back( cv::Point2d(399, 561) );    // Chin
-   image_points.push_back( cv::Point2d(337, 297) );     // Left eye left corner
+   image_points.push_back( cv::Point2d(337, 297) );    // Left eye left corner
    image_points.push_back( cv::Point2d(513, 301) );    // Right eye right corner
    image_points.push_back( cv::Point2d(345, 465) );    // Left Mouth corner
    image_points.push_back( cv::Point2d(453, 469) );    // Right mouth corner
@@ -140,4 +140,40 @@
    + feature extraction
    + classification
 
-2. 
+2. plate detection
+   + denoising
+   + sobel filter: car plates have high density of vertical lines
+   + threshold operation
+   + close morphological
+   + mask of one of filled area
+   + possible detected plates
+   + plates detected by SVM classifier
+3. equalize image
+   + equalize v channnel of hsv image 
+   + cv::split
+   + cv::merge
+   ```c++
+   if (in.channels() == 3) {
+      cv::Mat hsv;
+      std::vector<cv::Mat> hsv_split;
+      cv::cvtColor(in, hsv, cv::COLOR_BGR2HSV);
+      cv::split(hsv, hsv_split);
+      cv::equalizeHist(hsv_split[2], hsv_split[2]);
+      cv::merge(hsv_split, hsv);
+      cv::cvtColor(hsv, out, cv::COLOR_HSV2BGR);
+   } else if (in.channels() == 1) {
+      cv::equalizeHist(in, out);
+   }
+   ```
+4. offline svm training
+   ```c++
+
+   ```
+5. OCR segmentation
+   + equalize histogram
+   + threshold
+   + find contours: segment characters, only search white pixels
+
+6. character classification with CNN
+   
+

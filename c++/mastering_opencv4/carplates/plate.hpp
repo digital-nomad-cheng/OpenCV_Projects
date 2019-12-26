@@ -1,8 +1,8 @@
 #ifndef Plate_hpp
 #define Plate_hpp
 
-#include <string.h>
-#include <vector.h>
+#include <string>
+#include <vector>
 
 #include <opencv2/opencv.hpp>
 
@@ -16,6 +16,6 @@ public:
     cv::Mat plate_img;
     std::vector<char> chars;
     std::vector<cv::Rect> chars_pos;
-}
+};
 
 #endif

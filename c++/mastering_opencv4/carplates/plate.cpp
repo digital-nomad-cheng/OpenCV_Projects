@@ -40,11 +40,11 @@ std::string Plate::str()
         float aux_ai = x_positions[i];
         float aux_xmin = x_positions[min_idx];
         x_positions[i] = aux_xmin;
-        x_positions[min_idx] = aux_xi;
+        x_positions[min_idx] = aux_i;
     }
 
     for (int i = 0; i < order_index.size(); i++) {
-        result = result+chars[orderIndex[i]];
+        result = result+chars[order_index[i]];
     }
 
     return result;

@@ -128,7 +128,70 @@ std::vector<CharSegment> OCR::segment(Plate plate)
 
 cv::Mat OCR::projectedHistogram(cv::Mat img, int t)
 {
+    int size = (t)? img.rows: img.cols;
+    cv::Mat mhist = cv::Mat::zeros(1, size, CV_32F);
+    for (int j = 0; j < size; j++) {
+        cv::Mat data = (t)?img.row(j):img.col(j);
+        mhist.at<float>(j) = countNonZero(data);
+    }
+    double min, max;
+    cv::minMaxLoc(mhist, &min, &max);
+
+    if (max > 0){
+        mhist.convertTo(mhist, -1, 1.0f/max, 0);
+    }
+
+    return mhist;
 }
+
+cv::Mat OCR::getVisualHistogram(cv::Mat *hist, int type)
+{
+    int size = 100;
+    cv::Mat im_hist;
+    
+    if (type==HORIZONTAL) {
+        im_hist.create(cv::Size(size, hist->cols), CV_8UC3);
+    } else {
+        im_hist.create(cv::Size(hist-cols, size), CV_8UC3);
+    }
+    // ?
+    im_hist = cv::Scalar(55, 55, 55);
+    for (int i = 0; i < hist-cols; i++) {
+        float value = hist->at<float>(i);
+        int max_val = (int)(value*size);
+
+        cv::Point p1, p2, p3, p4;
+
+        if (type==HORIZONTAL) {
+            p1.x = p3.x = 0;
+            p2.x = p4.x = max_val;
+            p1.y = p2.y = i;
+            p3.y = p4.y = i+1;
+
+            cv::line(im_hist, pt1, pt2, cv::CV_RGB(220, 220, 220), 1, 8, 0);
+            cv::line(im_hist, pt3, pt4, CV_RGB(34, 34, 34), 1, 8, 0);
+
+            p3.y = p4.y = i+2;
+            cv::line(im_hist, pt3, pt4, CV_RGB(44, 44, 44), 1, 8, 0):
+            p3.y = p4.y = i+3;
+            cv::line(im_hist, p3, p4, CV_RGB(50, 50, 50), 1, 8, 0):
+        } else {
+            p1.x = p2.x = i;
+            p3.x = p4.x = i+1;
+            p1.y = p3.y = 100;
+            p2.y = p4.y = 100 - max_val;
+
+            cv::line(im_hist, p1, p2, CV_RGB(220, 220, 220), 1, 8, 0):
+            cv::line(im_hist, p3, p4, CV_RGB(24, 24, 24), 1, 8, 0);
+            p3.x = p4.x = i+2;
+            cv::line(im_hist, p3, p4, CV_RGB(44, 44, 44), 1, 8, 0);
+            p3.x = p4.x = i+3;
+            cv::line(im_hist, p3, p4, CV_RGB(50, 50, 50), 1, 8, 0);
+        }
+    }
+    return im_hist;
+}
+
     
 
                                         
