@@ -115,8 +115,8 @@ std::vector<Plate> DetectRegions::segment(cv::Mat input)
         int new_mask_val = 255;
         int num_seeds = 10;
         cv::Rect ccomp;
-        int flags = connectivity + (new_mask_val << 8) + 
-            CV_FLOODFILL_FIXED_RANGE + CV_FLOODFILL_MASK_ONLY;
+        int flags = connectivity + (new_mask_val << 8) + CV_FLOODFILL_MASK_ONLY;
+            # CV_FLOODFILL_FIXED_RANGE + CV_FLOODFILL_MASK_ONLY;
         for (int j = 0; j < num_seeds; j++) {
             cv::Point seed;
             seed.x = rects[i].center.x + rand() % (int)min_size - (min_size/2);
