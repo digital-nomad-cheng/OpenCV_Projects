@@ -16,8 +16,8 @@ bool DetectRegions::verifySizes(cv::RotatedRect mr)
     float error = 0.4;
     float aspect = 4.7272; // car plate aspect, 52/11
     // min and max area
-    int min = 15*aspect*15;
-    int max = 125*aspect*125;
+    int amin = 15*aspect*15;
+    int amax = 125*aspect*125;
     // min and max aspect ratio
     float rmin = aspect - aspect*error;
     float rmax = aspect + aspect*error;
@@ -29,7 +29,7 @@ bool DetectRegions::verifySizes(cv::RotatedRect mr)
         r = (float)mr.size.height / (float)mr.size.width;
     }
 
-    if ((area < min || area > max) || (r < min || r > max)) {
+    if ((area < amin || area > amax) || (r < rmin || r > rmax)) {
         return false;
     } else {
         return true;
@@ -95,7 +95,8 @@ std::vector<Plate> DetectRegions::segment(cv::Mat input)
             rects.push_back(mr);
         }
     }
-
+    
+    std::cout << "Contour size: " << contours.size() << std::endl;
     cv::Mat result;
     input.copyTo(result);
     cv::drawContours(result, contours, -1, cv::Scalar(255, 0, 0), 1);
@@ -124,7 +125,8 @@ std::vector<Plate> DetectRegions::segment(cv::Mat input)
             int area = cv::floodFill(input, mask, seed, cv::Scalar(255, 0, 0),
                                      &ccomp,
                                      cv::Scalar(low_diff, low_diff, low_diff),
-                                     cv::Scalar(up_diff, up_diff, up_diff));
+                                     cv::Scalar(up_diff, up_diff, up_diff),
+                                     flags);
         }
         if (show_steps) {
             cv::imshow("mask", mask);
@@ -140,7 +142,10 @@ std::vector<Plate> DetectRegions::segment(cv::Mat input)
         }
         
         cv::RotatedRect min_rect = cv::minAreaRect(points_interest);
-        if (verifySizes(min_rect)) {
+        std::cout << "img size:" << input.cols<< " " << input.rows<< std::endl;
+        std::cout << "min_rect:" << min_rect.size.width << " " << min_rect.size.height  << std::endl;
+        if (1) {// verifySizes(min_rect)) {
+            std::cout << "verify min size" << std::endl;
             cv::Point2f rect_points[4];
             min_rect.points(rect_points);
             for (int j = 0; j < 4; j++) {

@@ -3,10 +3,12 @@ cmake_minimum_required (VERSION 3.0)
 PROJECT(ANPR)
 set(PROJECT_VERSION "0.1")
 set(CMAKE_CXX_STANDARD 11)
-set(EXCUTABLE_OUTPUT_PATH "/Users/vincent/Documents/Repo/opencv_projects/bin/") 
+set(EXCUTABLE_OUTPUT_PATH "/home/idealabs/Work/tmp/opencv_projects/mastering_opencv4/bin/") 
 
 # requires OpenCV
 # FIND_PACKAGE(OpenCV 4.0.0 REQUIRED)
+set(OpenCV_DIR "/home/idealabs/Documents/LibModel/lib/opencv-3.4.8/build")
+set(OpenCV_INCLUDE_DIRS "/home/idealabs/Documents/LibModel/lib/opencv-3.4.8/include")
 FIND_PACKAGE(OpenCV REQUIRED)
 MESSAGE("OpenCV version: ${OpenCV_VERSION}")
 include_directories(${OpenCV_INCLUDE_DIRS})
