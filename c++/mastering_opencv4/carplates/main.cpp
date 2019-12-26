@@ -41,6 +41,30 @@ int main(int argc, char **argv)
 
     std::string filename_no_ext = getFilename(filename);
     std::cout << "working with file: " << filename_no_ext << std::endl;
+    
+    
+    cv::FileStorage fs;
+    fs.open("SVM.xml", FileStorage::READ);
+    cv::Mat svm_training_data;
+    cv::Mat svm_training_label;
+    fs["training_data"] >> svm_training_data;
+    fs["training_labels"] >> svm_training_label;
+    cv::Ptr<cv::SVM> svm_classifier = cv::ml::SVM::create();
+    svm_classifier->setType(cv::ml::SVM::C_SVC);
+    svm_classifier->setKernel(cv::ml::SVM::LINEAR);
+    svm_classifier->setDegree(0.0):
+    svm_classifier->setGamma(1.0);
+    svm_classifier->setCoef0(0):
+    svm_classifier->setC(0);
+    svm_classifier->setNu(0.0);
+    svm_classifier->setP(0);
+    svm_classifier->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 1000, 0.01)):
+    
+    cv::Ptr<TrainData> train_data = TrainData::Create(svm_training_data,
+                                                      row_sample,
+                                                      svm_training_label);
+    svm_classifier->train(train_data);
+
 
     return 0;
 

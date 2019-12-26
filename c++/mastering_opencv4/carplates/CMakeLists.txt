@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 3.0)
 
 PROJECT(ANPR)
 set(PROJECT_VERSION "0.1")
-
 set(CMAKE_CXX_STANDARD 11)
+set(EXCUTABLE_OUTPUT_PATH "/Users/vincent/Documents/Repo/opencv_projects/bin/") 
 
 # requires OpenCV
 # FIND_PACKAGE(OpenCV 4.0.0 REQUIRED)
@@ -19,13 +19,16 @@ set(SRC
     plate.cpp
 )
 
+ADD_EXECUTABLE( prepare_svm_data prepare_svm_training_data.cpp )
+TARGET_LINK_LIBRARIES( prepare_svm_data  ${OpenCV_LIBS} )
+
 ADD_EXECUTABLE(${PROJECT_NAME} ${SRC})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCV_LIBS})
 
 
 # set(RESOURCES
 #    README.txt
-#    SVM.xml
+#    svm_training_data.xml
 #    OCR.xml
 #    test
 #)
