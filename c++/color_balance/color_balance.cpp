@@ -116,7 +116,7 @@ cv::Mat gray_world(cv::Mat &img)
 
 int main()
 {
-	std::string image_path = "/home/idealabs/Work/tmp/opencv_projects/resources/color_balance_lily.png";
+	std::string image_path = "/home/idealabs/Work/tmp/opencv_projects/resources/color_balance4.jpg";
 
 	cv::Mat img = cv::imread(image_path, 1);
     cv::Mat result;
